@@ -117,16 +117,14 @@ void add_option(int options_n, int tiles_start, int options_area_sum) {
 			break;
 		}
 		options_area_sum += options[options_n]->area;
-		if (options_area_sum == square_area) {
+		if (options_area_sum == square_area && is_mondrian(options_n+1) == 1) {
 			int option_idx;
-			if (is_mondrian(options_n+1) == 1) {
-				delta_min = delta;
-				printf("%d\n", delta_min);
-				for (option_idx = 0; option_idx <= options_n; option_idx++) {
-					printf("%dx%d\n", options[option_idx]->height, options[option_idx]->width);
-				}
-				fflush(stdout);
+			delta_min = delta;
+			printf("%d\n", delta_min);
+			for (option_idx = 0; option_idx <= options_n; option_idx++) {
+				printf("%dx%d\n", options[option_idx]->height, options[option_idx]->width);
 			}
+			fflush(stdout);
 		}
 		if (options_area_sum < square_area && options_area_sum+tiles_area_sum-options[options_n]->area_sum >= square_area) {
 			add_option(options_n+1, tile_idx+1, options_area_sum);
