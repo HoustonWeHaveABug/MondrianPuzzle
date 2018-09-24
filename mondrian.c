@@ -74,14 +74,14 @@ int main(void) {
 		tiles_n = 0;
 		for (height = 1; height < square_order; height++) {
 			for (width = 1; width <= height; width++) {
-				if (height*width-(square_order-height)*square_order <= delta_min) {
+				if (height*width-square_order*(square_order-height) <= delta_min) {
 					set_tile(tiles+tiles_n, height, width);
 					tiles_n++;
 				}
 			}
 		}
 		for (width = 1; width < square_order; width++) {
-			if (square_order*width-(square_order-width)*square_order <= delta_min) {
+			if (square_order*width-square_order*(square_order-width) <= delta_min) {
 				set_tile(tiles+tiles_n, square_order, width);
 				tiles_n++;
 			}
@@ -135,20 +135,24 @@ int add_option(int tiles_start, int options_n, int width_max, int options_area_s
 			continue;
 		}
 		options_area_sum += options[options_n]->area;
-		if (options_area_sum == square_area && is_mondrian(options_n+1) == 1) {
-			int option_idx;
-			r = 1;
-			for (option_idx = 0; option_idx <= options_n; option_idx++) {
-				printf("%dx%d\n", options[option_idx]->height, options[option_idx]->width);
+		if (options_area_sum == square_area) {
+			if (is_mondrian(options_n+1) == 1) {
+				int option_idx;
+				r = 1;
+				for (option_idx = 0; option_idx <= options_n; option_idx++) {
+					printf("%dx%d\n", options[option_idx]->height, options[option_idx]->width);
+				}
+				fflush(stdout);
 			}
-			fflush(stdout);
 		}
-		if (options_area_sum < square_area && options_area_sum+tiles_area_sum-options[options_n]->area_sum >= square_area) {
-			if (options[options_n]->width > width_max) {
-				r = add_option(tile_idx+1, options_n+1, options[options_n]->width, options_area_sum);
-			}
-			else {
-				r = add_option(tile_idx+1, options_n+1, width_max, options_area_sum);
+		else if (options_area_sum < square_area) {
+			if (options_area_sum+tiles_area_sum-options[options_n]->area_sum >= square_area) {
+				if (options[options_n]->width > width_max) {
+					r = add_option(tile_idx+1, options_n+1, options[options_n]->width, options_area_sum);
+				}
+				else {
+					r = add_option(tile_idx+1, options_n+1, width_max, options_area_sum);
+				}
 			}
 		}
 		options_area_sum -= options[options_n]->area;
