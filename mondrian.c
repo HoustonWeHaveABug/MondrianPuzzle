@@ -11,8 +11,6 @@ typedef struct {
 	int height_slots_n;
 	int width_slots_n;
 	int row_nodes_n;
-	int height_checked;
-	int width_checked;
 }
 tile_t;
 
@@ -33,9 +31,12 @@ void set_tile(tile_t *, int, int);
 int compare_tiles(const void *, const void *);
 int add_option(int, int, int, int);
 int is_mondrian(int);
-int check_rectangle(int, int, int, int);
 void set_column_node(node_t *, node_t *);
-void set_tile_row_nodes(int, int, int, int, int, int);
+int set_option_row_nodes(tile_t *, int, int);
+int set_rectangle_row_nodes(int, int, int, int, int);
+int set_side_slots(int, int, int, int *);
+int add_side_slots(int, int, int, int, int, int *);
+int is_square(tile_t *);
 void set_slot_row_nodes(int, int, int, int, int);
 void set_row_node(int, node_t *);
 void link_left(node_t *, node_t *);
@@ -44,7 +45,7 @@ int dlx_search(void);
 void cover_column(node_t *);
 void uncover_column(node_t *);
 
-int square_order, delta_min, square_area, tiles_n, tiles_area_sum;
+int square_order, delta_min, square_area, *height_slots, *width_slots, tiles_n, tiles_area_sum;
 tile_t *tiles, **options;
 node_t *nodes, **tops, *header, *row_node;
 
@@ -67,6 +68,23 @@ int main(void) {
 	if (!options) {
 		fprintf(stderr, "Could not allocate memory for options\n");
 		fflush(stderr);
+		free(tiles);
+		return EXIT_FAILURE;
+	}
+	height_slots = malloc(sizeof(int)*(size_t)square_order);
+	if (!height_slots) {
+		fprintf(stderr, "Could not allocate memory for height_slots\n");
+		fflush(stderr);
+		free(options);
+		free(tiles);
+		return EXIT_FAILURE;
+	}
+	width_slots = malloc(sizeof(int)*(size_t)square_order);
+	if (!width_slots) {
+		fprintf(stderr, "Could not allocate memory for width_slots\n");
+		fflush(stderr);
+		free(height_slots);
+		free(options);
 		free(tiles);
 		return EXIT_FAILURE;
 	}
@@ -100,6 +118,8 @@ int main(void) {
 		}
 	}
 	while (!r);
+	free(width_slots);
+	free(height_slots);
 	free(options);
 	free(tiles);
 	return EXIT_SUCCESS;
@@ -163,19 +183,8 @@ int add_option(int tiles_start, int options_n, int width_max, int options_area_s
 int is_mondrian(int options_n) {
 	int column_nodes_n = square_area+options_n, nodes_n = column_nodes_n+1, option_idx, node_idx, r;
 	for (option_idx = 0; option_idx < options_n; option_idx++) {
-		options[option_idx]->height_checked = 0;
-		options[option_idx]->width_checked = 0;
-	}
-	r = check_rectangle(options_n, 0, 0, options[0]->height) && check_rectangle(options_n, 0, 0, options[0]->width);
-	for (option_idx = 1; option_idx < options_n && r; option_idx++) {
-		r = (options[option_idx]->height_checked || check_rectangle(options_n, option_idx, 0, options[option_idx]->height)) && (options[option_idx]->width_checked || check_rectangle(options_n, option_idx, 0, options[option_idx]->width));
-	}
-	if (!r) {
-		return 0;
-	}
-	for (option_idx = 0; option_idx < options_n; option_idx++) {
 		nodes_n += options[option_idx]->row_nodes_n;
-		if (options[option_idx]->height != options[option_idx]->width) {
+		if (!is_square(options[option_idx])) {
 			nodes_n += options[option_idx]->row_nodes_n;
 		}
 	}
@@ -199,11 +208,14 @@ int is_mondrian(int options_n) {
 		tops[node_idx] = nodes+node_idx;
 	}
 	row_node = header+1;
-	for (option_idx = 0; option_idx < options_n; option_idx++) {
-		set_tile_row_nodes(options[option_idx]->height_slots_n, options[option_idx]->width_slots_n, options[option_idx]->height, options[option_idx]->width, options[option_idx]->area, option_idx);
-		if (options[option_idx]->height != options[option_idx]->width) {
-			set_tile_row_nodes(options[option_idx]->width_slots_n, options[option_idx]->height_slots_n, options[option_idx]->width, options[option_idx]->height, options[option_idx]->area, option_idx);
-		}
+	r = set_option_row_nodes(options[0], options_n, 0);
+	for (option_idx = 1; option_idx < options_n && r; option_idx++) {
+		r = set_option_row_nodes(options[option_idx], options_n, option_idx);
+	}
+	if (!r) {
+		free(tops);
+		free(nodes);
+		return -1;
 	}
 	for (node_idx = 0; node_idx < column_nodes_n; node_idx++) {
 		link_top(nodes+node_idx, tops[node_idx]);
@@ -214,39 +226,76 @@ int is_mondrian(int options_n) {
 	return r;
 }
 
-int check_rectangle(int options_n, int option_ref, int option_idx, int options_side_sum) {
-	if (options_side_sum == square_order) {
-		return 1;
-	}
-	if (option_idx == options_n || options_side_sum > square_order) {
-		return 0;
-	}
-	if (option_idx != option_ref) {
-		if (check_rectangle(options_n, option_ref, option_idx+1, options_side_sum+options[option_idx]->height)) {
-			options[option_idx]->height_checked = 1;
-			return 1;
-		}
-		if (check_rectangle(options_n, option_ref, option_idx+1, options_side_sum+options[option_idx]->width)) {
-			options[option_idx]->width_checked = 1;
-			return 1;
-		}
-	}
-	return check_rectangle(options_n, option_ref, option_idx+1, options_side_sum);
-}
-
 void set_column_node(node_t *node, node_t *left) {
 	node->rows_n = 0;
 	link_left(node, left);
 }
 
-void set_tile_row_nodes(int height_slots_n, int width_slots_n, int height, int width, int area, int option_idx) {
-	int height_slot_idx;
-	for (height_slot_idx = 0; height_slot_idx < height_slots_n; height_slot_idx++) {
-		int width_slot_idx;
-		for (width_slot_idx = 0; width_slot_idx < width_slots_n; width_slot_idx++) {
-			set_slot_row_nodes(height_slot_idx*square_order+width_slot_idx, height, width, area, option_idx);
+int set_option_row_nodes(tile_t *option, int options_n, int option_idx) {
+	return set_rectangle_row_nodes(option->height, option->width, option->area, options_n, option_idx) && (option->height == option->width || set_rectangle_row_nodes(option->width, option->height, option->area, options_n, option_idx));
+}
+
+int set_rectangle_row_nodes(int height, int width, int area, int options_n, int option_idx) {
+	if (set_side_slots(height, options_n, option_idx, height_slots) && set_side_slots(width, options_n, option_idx, width_slots)) {
+		int height_slot_idx;
+		for (height_slot_idx = 0; height_slot_idx < square_order; height_slot_idx++) {
+			if (height_slots[height_slot_idx]) {
+				int width_slot_idx;
+				for (width_slot_idx = 0; width_slot_idx < square_order; width_slot_idx++) {
+					if (width_slots[width_slot_idx]) {
+						set_slot_row_nodes(height_slot_idx*square_order+width_slot_idx, height, width, area, option_idx);
+					}
+				}
+			}
+		}
+		return 1;
+	}
+	return 0;
+}
+
+int set_side_slots(int side, int options_n, int option_idx, int *slots) {
+	int slot_idx;
+	for (slot_idx = 0; slot_idx < square_order; slot_idx++) {
+		slots[slot_idx] = 0;
+	}
+	return add_side_slots(side, options_n, option_idx, 0, 0, slots);
+}
+
+int add_side_slots(int side, int options_n, int option_ref, int option_idx, int options_side_sum, int *slots) {
+	int r1, r2, r3;
+	if (side+options_side_sum > square_order) {
+		return 0;
+	}
+	if (side+options_side_sum == square_order) {
+		slots[options_side_sum] = 1;
+		return 1;
+	}
+	if (option_idx == options_n) {
+		return 0;
+	}
+	if (option_idx != option_ref) {
+		r1 = add_side_slots(side, options_n, option_ref, option_idx+1, options_side_sum+options[option_idx]->height, slots);
+		if (!is_square(options[option_idx])) {
+			r2 = add_side_slots(side, options_n, option_ref, option_idx+1, options_side_sum+options[option_idx]->width, slots);
+		}
+		else {
+			r2 = r1;
 		}
 	}
+	else {
+		r1 = 0;
+		r2 = 0;
+	}
+	r3 = add_side_slots(side, options_n, option_ref, option_idx+1, options_side_sum, slots);
+	if (r1 || r2 || r3) {
+		slots[options_side_sum] = 1;
+		return 1;
+	}
+	return 0;
+}
+
+int is_square(tile_t *tile) {
+	return tile->height == tile->width;
 }
 
 void set_slot_row_nodes(int slot_start, int height, int width, int area, int option_idx) {
