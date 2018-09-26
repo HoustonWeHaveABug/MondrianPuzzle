@@ -156,7 +156,7 @@ int add_option(int tiles_start, int options_n, int width_max, int options_area_s
 		}
 		options_area_sum += options[options_n]->area;
 		if (options_area_sum == square_area) {
-			if (is_mondrian(options_n+1) == 1) {
+			if (delta == delta_min && is_mondrian(options_n+1) == 1) {
 				int option_idx;
 				r = 1;
 				for (option_idx = 0; option_idx <= options_n; option_idx++) {
