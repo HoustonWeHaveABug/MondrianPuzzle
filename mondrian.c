@@ -41,11 +41,14 @@ void set_slot_row_nodes(int, int, int, int, int);
 void set_row_node(int, node_t *);
 void link_left(node_t *, node_t *);
 void link_top(node_t *, node_t *);
+int is_unique_column(node_t *);
+int compare_columns(node_t *, node_t *);
+void remove_column(node_t *);
 int dlx_search(void);
 void cover_column(node_t *);
 void uncover_column(node_t *);
 
-int square_order, delta_min, square_area, *height_slots, *width_slots, tiles_n, tiles_area_sum;
+int square_order, delta_min, square_area, *height_slots, *width_slots, tiles_n, tiles_area_sum, cost;
 tile_t *tiles, **options;
 node_t *nodes, **tops, *header, *row_node;
 
@@ -139,7 +142,7 @@ int compare_tiles(const void *a, const void *b) {
 	if (tile_a->area != tile_b->area) {
 		return tile_b->area-tile_a->area;
 	}
-	return tile_a->height-tile_b->height;
+	return tile_b->width-tile_a->width;
 }
 
 int add_option(int tiles_start, int options_n, int width_max, int options_area_sum) {
@@ -181,7 +184,7 @@ int add_option(int tiles_start, int options_n, int width_max, int options_area_s
 }
 
 int is_mondrian(int options_n) {
-	int column_nodes_n = square_area+options_n, nodes_n = column_nodes_n+1, option_idx, node_idx, r;
+	int column_nodes_n = square_area+options_n, nodes_n = column_nodes_n+1, option_idx, node_idx, r, removed;
 	for (option_idx = 0; option_idx < options_n; option_idx++) {
 		nodes_n += options[option_idx]->row_nodes_n;
 		if (!is_square(options[option_idx])) {
@@ -220,7 +223,19 @@ int is_mondrian(int options_n) {
 	for (node_idx = 0; node_idx < column_nodes_n; node_idx++) {
 		link_top(nodes+node_idx, tops[node_idx]);
 	}
+	removed = 0;
+	for (node_idx = 1; node_idx < square_area; node_idx++) {
+		if (!is_unique_column(nodes+node_idx)) {
+			remove_column(nodes+node_idx);
+			removed++;
+		}
+	}
+	printf("is_mondrian options %d columns removed %d\n", options_n, removed);
+	fflush(stdout);
+	cost = 0;
 	r = dlx_search();
+	printf("is_mondrian cost %d\n", cost);
+	fflush(stdout);
 	free(tops);
 	free(nodes);
 	return r;
@@ -232,16 +247,27 @@ void set_column_node(node_t *node, node_t *left) {
 }
 
 int set_option_row_nodes(tile_t *option, int options_n, int option_idx) {
-	return set_rectangle_row_nodes(option->height, option->width, option->area, options_n, option_idx) && (option->height == option->width || set_rectangle_row_nodes(option->width, option->height, option->area, options_n, option_idx));
+	return set_rectangle_row_nodes(option->height, option->width, option->area, options_n, option_idx) && (option->height == option->width || option_idx == 0 || set_rectangle_row_nodes(option->width, option->height, option->area, options_n, option_idx));
 }
 
 int set_rectangle_row_nodes(int height, int width, int area, int options_n, int option_idx) {
 	if (set_side_slots(height, options_n, option_idx, height_slots) && set_side_slots(width, options_n, option_idx, width_slots)) {
-		int height_slot_idx;
-		for (height_slot_idx = 0; height_slot_idx < square_order; height_slot_idx++) {
+		int slot_max, height_slot_idx;
+		if (option_idx == 0) {
+			if (square_order%2 == 0) {
+				slot_max = square_order/2;
+			}
+			else {
+				slot_max = square_order/2+1;
+			}
+		}
+		else {
+			slot_max = square_order;
+		}
+		for (height_slot_idx = 0; height_slot_idx < slot_max; height_slot_idx++) {
 			if (height_slots[height_slot_idx]) {
 				int width_slot_idx;
-				for (width_slot_idx = 0; width_slot_idx < square_order; width_slot_idx++) {
+				for (width_slot_idx = 0; width_slot_idx < slot_max; width_slot_idx++) {
 					if (width_slots[width_slot_idx]) {
 						set_slot_row_nodes(height_slot_idx*square_order+width_slot_idx, height, width, area, option_idx);
 					}
@@ -330,9 +356,41 @@ void link_top(node_t *node, node_t *top) {
 	top->bottom = node;
 }
 
+int is_unique_column(node_t *column) {
+	node_t *node;
+	for (node = column->left; node != header && compare_columns(column, node); node = node->left);
+	return node == header;
+}
+
+int compare_columns(node_t *column_a, node_t *column_b) {
+	node_t *row_a;
+	if (column_a->rows_n != column_a->rows_n) {
+		return 1;
+	}
+	for (row_a = column_a->bottom; row_a != column_a; row_a = row_a->bottom) {
+		node_t *node;
+		for (node = row_a->left; node != row_a && node->column > column_b; node = node->left);
+		if (node->column != column_b) {
+			break;
+		}
+	}
+	return row_a != column_a;
+}
+
+void remove_column(node_t *column) {
+	node_t *row;
+	column->right->left = column->left;
+	column->left->right = column->right;
+	for (row = column->bottom; row != column; row = row->bottom) {
+		row->right->left = row->left;
+		row->left->right = row->right;
+	}
+}
+
 int dlx_search(void) {
 	int r;
 	node_t *column_min, *column, *row;
+	cost++;
 	if (header->right == header) {
 		return 1;
 	}
