@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 #define SQUARE_ORDER_MIN 3
-#undef LOG_DLX_SEARCH
+#define LOG_DLX_SEARCH
 
 typedef struct {
 	int height;
@@ -365,7 +365,7 @@ void generate_height_sets(int heights_n, int heights_start, int heights_set_max,
 	}
 	else {
 		int heights_idx;
-		for (heights_idx = heights_start; heights_idx < heights_n; heights_idx++) {
+		for (heights_idx = heights_start; heights_idx <= heights_n-heights_set_max+heights_set_idx; heights_idx++) {
 			generate_height_sets(heights_n, heights_idx+1, heights_set_max, heights_set_idx+1, slot_idx+heights[heights_idx], widths_n);
 		}
 	}
@@ -377,7 +377,7 @@ void generate_width_sets(int widths_n, int widths_start, int widths_set_max, int
 	}
 	else {
 		int widths_idx;
-		for (widths_idx = widths_start; widths_idx < widths_n; widths_idx++) {
+		for (widths_idx = widths_start; widths_idx <= widths_n-widths_set_max+widths_set_idx; widths_idx++) {
 			generate_width_sets(widths_n, widths_idx+1, widths_set_max, widths_set_idx+1, slot_idx+widths[widths_idx]);
 		}
 	}
