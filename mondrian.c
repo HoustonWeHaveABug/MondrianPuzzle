@@ -112,16 +112,32 @@ int main(void) {
 		tiles_n = 0;
 		for (height = 1; height < square_order; height++) {
 			for (width = 1; width <= height; width++) {
-				if (height*width-square_order*(square_order-height) <= delta_min) {
+				if (height*width-square_order*(square_order-height) <= delta_min && height*width-height*(square_order-width) <= delta_min) {
 					set_tile(tiles+tiles_n, height, width);
 					tiles_n++;
 				}
 			}
 		}
 		for (width = 1; width < square_order; width++) {
-			if (square_order*width-square_order*(square_order-width) <= delta_min) {
-				set_tile(tiles+tiles_n, square_order, width);
-				tiles_n++;
+			if (width > square_order-width) {
+				if (square_order*width-square_order*(square_order-width) <= delta_min) {
+					set_tile(tiles+tiles_n, square_order, width);
+					tiles_n++;
+				}
+			}
+			else {
+				if (square_order%2 == 0) {
+					if (square_order*width-(square_order/2-1)*(square_order-width) <= delta_min) {
+						set_tile(tiles+tiles_n, square_order, width);
+						tiles_n++;
+					}
+				}
+				else {
+					if (square_order*width-(square_order/2)*(square_order-width) <= delta_min) {
+						set_tile(tiles+tiles_n, square_order, width);
+						tiles_n++;
+					}
+				}
 			}
 		}
 		qsort(tiles, (size_t)tiles_n, sizeof(tile_t), compare_tiles);
@@ -287,8 +303,14 @@ int set_rectangle_row_nodes(int height, int width, int area, int options_n, int 
 			slot_max = square_order;
 		}
 		for (height_slot_idx = 0; height_slot_idx < slot_max; height_slot_idx++) {
-			int width_slot_idx;
-			for (width_slot_idx = 0; width_slot_idx < slot_max; width_slot_idx++) {
+			int slot_min, width_slot_idx;
+			if (option_idx == 0 && is_square(options[option_idx])) {
+				slot_min = height_slot_idx;
+			}
+			else {
+				slot_min = 0;
+			}
+			for (width_slot_idx = slot_min; width_slot_idx < slot_max; width_slot_idx++) {
 				if (slots[height_slot_idx*square_order+width_slot_idx]) {
 					set_slot_row_nodes(height_slot_idx*square_order+width_slot_idx, height, width, area, option_idx);
 				}
