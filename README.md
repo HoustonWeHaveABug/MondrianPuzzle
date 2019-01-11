@@ -5,6 +5,6 @@ Solution to challenge https://www.reddit.com/r/dailyprogrammer/comments/9dv08q/2
 Parameters read on standard input:
 - Square order (>= 3)
 - Minimum difference (>= 0)
-- Maximum diffrence (>= Minimum difference)
+- Maximum difference (>= Minimum difference)
 
 The program will try to solve the puzzle from minimum difference to maximum difference incrementally until a solution is found.
