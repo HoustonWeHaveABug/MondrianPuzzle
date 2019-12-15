@@ -2,7 +2,6 @@
 #include <stdlib.h>
 
 #define SQUARE_ORDER_MIN 3
-#define MONDRIAN_VERBOSE
 
 typedef struct tile_s tile_t;
 
@@ -41,13 +40,12 @@ void set_tile(tile_t *, int, int);
 int compare_tiles(const void *, const void *);
 int add_option(int, int, int);
 int is_mondrian(int);
-int check_option_slots(int, int, int, int, int);
 void set_column_node(node_t *, node_t *);
-void set_option_row_nodes(tile_t *, int, int);
+int set_option_row_nodes(tile_t *, int, int);
 void add_option_slots(int, int, int, int, int, int, int);
 void generate_slots(int, int);
-void generate_height_sets(int, int, tile_t *, int, int, int, int);
-void generate_width_sets(int, int, tile_t *, int, int, int);
+void generate_heights_set(int, int, tile_t *, int, int, int, int);
+void generate_widths_set(int, int, tile_t *, int, int, int);
 int is_square(tile_t *);
 void set_slot_row_nodes(int, int, int, int, int);
 void set_row_node(int, int, int, int, int, node_t *);
@@ -67,16 +65,13 @@ int set_row_value(node_t *);
 void cover_column(node_t *);
 void uncover_column(node_t *);
 
-int square_order, delta_min, square_area, *slots, nodes_max, column_nodes_max, tiles_n, tiles_area_sum;
-#ifdef MONDRIAN_VERBOSE
-int cost;
-#endif
+int square_order, delta_min, verbose, square_area, *slots, nodes_max, column_nodes_max, tiles_n, tiles_area_sum, cost;
 tile_t *tiles, *heights, *widths, **options;
 node_t *nodes, **tops, *header, *row_node;
 
 int main(void) {
 	int delta_max, tiles_max, height, width, tile_idx, r;
-	if (scanf("%d%d%d", &square_order, &delta_min, &delta_max) != 3 || square_order < SQUARE_ORDER_MIN || delta_min < 0 || delta_max < delta_min) {
+	if (scanf("%d%d%d%d", &square_order, &delta_min, &delta_max, &verbose) != 4 || square_order < SQUARE_ORDER_MIN || delta_min < 0 || delta_max < delta_min) {
 		fprintf(stderr, "Invalid parameters\n");
 		fflush(stderr);
 		return EXIT_FAILURE;
@@ -259,17 +254,7 @@ int add_option(int tiles_start, int options_n, int options_area_sum) {
 }
 
 int is_mondrian(int options_n) {
-	int option_idx, column_nodes_n, nodes_n, node_idx, removed, r;
-#ifdef MONDRIAN_VERBOSE
-	printf("check_option_slots options %d\n", options_n);
-	fflush(stdout);
-#endif
-	for (option_idx = 0; option_idx < options_n && check_option_slots(options_n, option_idx, 0, options[option_idx]->height, options[option_idx]->width); option_idx++);
-	if (option_idx < options_n) {
-		return 0;
-	}
-	column_nodes_n = square_area+options_n;
-	nodes_n = column_nodes_n+1;
+	int column_nodes_n = square_area+options_n, nodes_n = column_nodes_n+1, option_idx, node_idx, removed, r;
 	for (option_idx = 0; option_idx < options_n; option_idx++) {
 		nodes_n += options[option_idx]->row_nodes_n;
 		if (!is_square(options[option_idx])) {
@@ -302,16 +287,17 @@ int is_mondrian(int options_n) {
 		set_column_node(nodes+node_idx+1, nodes+node_idx);
 		tops[node_idx] = nodes+node_idx;
 	}
-#ifdef MONDRIAN_VERBOSE
-	printf("set_option_row_nodes options %d\n", options_n);
-	fflush(stdout);
-#endif
-	row_node = header+1;
-	for (option_idx = 0; option_idx < options_n; option_idx++) {
-		set_option_row_nodes(options[option_idx], options_n, option_idx);
+	if (verbose) {
+		printf("set_option_row_nodes options %d\n", options_n);
+		fflush(stdout);
 	}
+	row_node = header+1;
+	for (option_idx = 0; option_idx < options_n && set_option_row_nodes(options[option_idx], options_n, option_idx); option_idx++);
 	for (node_idx = 0; node_idx < column_nodes_n; node_idx++) {
 		link_top(nodes+node_idx, tops[node_idx]);
+	}
+	if (option_idx < options_n) {
+		return 0;
 	}
 	removed = 0;
 	for (node_idx = 1; node_idx < square_area; node_idx++) {
@@ -320,37 +306,17 @@ int is_mondrian(int options_n) {
 			removed++;
 		}
 	}
-#ifdef MONDRIAN_VERBOSE
-	printf("dlx_search options %d columns removed %d\n", options_n, removed);
-	fflush(stdout);
+	if (verbose) {
+		printf("dlx_search options %d columns removed %d\n", options_n, removed);
+		fflush(stdout);
+	}
 	cost = 0;
-#endif
 	r = dlx_search(options_n);
-#ifdef MONDRIAN_VERBOSE
-	printf("dlx_search cost %d\n", cost);
-	fflush(stdout);
-#endif
+	if (verbose) {
+		printf("dlx_search cost %d\n", cost);
+		fflush(stdout);
+	}
 	return r;
-}
-
-int check_option_slots(int options_n, int option_ref, int option_idx, int heights_sum, int widths_sum) {
-	int r;
-	if (heights_sum > square_order || widths_sum > square_order) {
-		return 0;
-	}
-	if (heights_sum == square_order && widths_sum == square_order) {
-		return 1;
-	}
-	if (option_idx == options_n) {
-		return 0;
-	}
-	if (option_idx != option_ref) {
-		r = check_option_slots(options_n, option_ref, option_idx+1, heights_sum+options[option_idx]->height, widths_sum) || check_option_slots(options_n, option_ref, option_idx+1, heights_sum, widths_sum+options[option_idx]->width) || (!is_square(options[option_idx]) && (check_option_slots(options_n, option_ref, option_idx+1, heights_sum+options[option_idx]->width, widths_sum) || check_option_slots(options_n, option_ref, option_idx+1, heights_sum, widths_sum+options[option_idx]->height)));
-	}
-	else {
-		r = 0;
-	}
-	return r || check_option_slots(options_n, option_ref, option_idx+1, heights_sum, widths_sum);
 }
 
 void set_column_node(node_t *node, node_t *left) {
@@ -358,8 +324,8 @@ void set_column_node(node_t *node, node_t *left) {
 	link_left(node, left);
 }
 
-void set_option_row_nodes(tile_t *option, int options_n, int option_idx) {
-	int slot_idx, slot_y_max, slot_x_max, height_slot_idx;
+int set_option_row_nodes(tile_t *option, int options_n, int option_idx) {
+	int rows_n = 0, slot_idx, slot_y_max, slot_x_max, height_slot_idx;
 	for (slot_idx = 0; slot_idx < square_area; slot_idx++) {
 		slots[slot_idx] = 0;
 	}
@@ -383,6 +349,7 @@ void set_option_row_nodes(tile_t *option, int options_n, int option_idx) {
 		for (width_slot_idx = slot_min; width_slot_idx < slot_x_max; width_slot_idx++) {
 			if (slots[height_slot_idx*square_order+width_slot_idx]) {
 				set_slot_row_nodes(height_slot_idx*square_order+width_slot_idx, option->height, option->width, option->area, option_idx);
+				rows_n++;
 			}
 		}
 	}
@@ -392,10 +359,12 @@ void set_option_row_nodes(tile_t *option, int options_n, int option_idx) {
 			for (width_slot_idx = 0; width_slot_idx < square_order; width_slot_idx++) {
 				if (slots[height_slot_idx*square_order+width_slot_idx]) {
 					set_slot_row_nodes(width_slot_idx*square_order+height_slot_idx, option->width, option->height, option->area, option_idx);
+					rows_n++;
 				}
 			}
 		}
 	}
+	return rows_n;
 }
 
 void add_option_slots(int options_n, int option_ref, int option_idx, int heights_n, int heights_sum, int widths_n, int widths_sum) {
@@ -431,39 +400,39 @@ void add_option_slots(int options_n, int option_ref, int option_idx, int heights
 void generate_slots(int heights_n, int widths_n) {
 	int heights_set_max;
 	for (heights_set_max = 0; heights_set_max <= heights_n; heights_set_max++) {
-		generate_height_sets(heights_n, 0, heights->next, heights_set_max, 0, 0, widths_n);
+		generate_heights_set(heights_n, 0, heights->next, heights_set_max, 0, 0, widths_n);
 	}
 }
 
-void generate_height_sets(int heights_n, int heights_start_idx, tile_t *heights_start, int heights_set_max, int heights_set_idx, int slot_idx, int widths_n) {
-	if (heights_set_idx == heights_set_max) {
+void generate_heights_set(int heights_n, int heights_start_idx, tile_t *heights_start, int heights_set_max, int heights_set_cur, int slot_idx, int widths_n) {
+	if (heights_set_cur == heights_set_max) {
 		int widths_set_max;
 		slot_idx *= square_order;
 		for (widths_set_max = 0; widths_set_max <= widths_n; widths_set_max++) {
-			generate_width_sets(widths_n, 0, widths->next, widths_set_max, 0, slot_idx);
+			generate_widths_set(widths_n, 0, widths->next, widths_set_max, 0, slot_idx);
 		}
 	}
 	else {
 		int heights_idx;
 		tile_t *tile;
-		for (heights_idx = heights_start_idx, tile = heights_start; heights_idx <= heights_n-heights_set_max+heights_set_idx; heights_idx++, tile = tile->next) {
+		for (heights_idx = heights_start_idx, tile = heights_start; heights_idx <= heights_n-heights_set_max+heights_set_cur; heights_idx++, tile = tile->next) {
 			if (tile == heights_start || tile->slot_height < tile->last->slot_height) {
-				generate_height_sets(heights_n, heights_idx+1, tile->next, heights_set_max, heights_set_idx+1, slot_idx+tile->slot_height, widths_n);
+				generate_heights_set(heights_n, heights_idx+1, tile->next, heights_set_max, heights_set_cur+1, slot_idx+tile->slot_height, widths_n);
 			}
 		}
 	}
 }
 
-void generate_width_sets(int widths_n, int widths_start_idx, tile_t *widths_start, int widths_set_max, int widths_set_idx, int slot_idx) {
-	if (widths_set_idx == widths_set_max) {
+void generate_widths_set(int widths_n, int widths_start_idx, tile_t *widths_start, int widths_set_max, int widths_set_cur, int slot_idx) {
+	if (widths_set_cur == widths_set_max) {
 		slots[slot_idx] = 1;
 	}
 	else {
 		int widths_idx;
 		tile_t *tile;
-		for (widths_idx = widths_start_idx, tile = widths_start; widths_idx <= widths_n-widths_set_max+widths_set_idx; widths_idx++, tile = tile->next) {
+		for (widths_idx = widths_start_idx, tile = widths_start; widths_idx <= widths_n-widths_set_max+widths_set_cur; widths_idx++, tile = tile->next) {
 			if (tile == widths_start || tile->slot_width < tile->last->slot_width) {
-				generate_width_sets(widths_n, widths_idx+1, tile->next, widths_set_max, widths_set_idx+1, slot_idx+tile->slot_width);
+				generate_widths_set(widths_n, widths_idx+1, tile->next, widths_set_max, widths_set_cur+1, slot_idx+tile->slot_width);
 			}
 		}
 	}
@@ -572,9 +541,7 @@ void remove_column(node_t *column) {
 int dlx_search(int options_n) {
 	int value_max, r;
 	node_t *column_min, *column, *row;
-#ifdef MONDRIAN_VERBOSE
 	cost++;
-#endif
 	if (header->right == header) {
 		int option_idx;
 		for (option_idx = 0; option_idx < options_n; option_idx++) {
@@ -583,17 +550,21 @@ int dlx_search(int options_n) {
 		fflush(stdout);
 		return 1;
 	}
+	if (header->right->rows_n == 0) {
+		return 0;
+	}
 	column_min = header->right;
-	value_max = set_column_value(column_min);
 	for (column = column_min->right; column != header; column = column->right) {
 		if (column->rows_n < column_min->rows_n) {
-			column_min = column;
-			if (column_min->rows_n == 0) {
+			if (column->rows_n == 0) {
 				return 0;
 			}
-			value_max = set_column_value(column_min);
+			column_min = column;
 		}
-		else if (column->rows_n == column_min->rows_n) {
+	}
+	value_max = set_column_value(column_min);
+	for (column = column_min->right; column != header; column = column->right) {
+		if (column->rows_n == column_min->rows_n) {
 			int value = set_column_value(column);
 			if (value > value_max) {
 				column_min = column;
