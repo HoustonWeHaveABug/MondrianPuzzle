@@ -6,5 +6,6 @@ Parameters read on standard input:
 - Square order (>= 3)
 - Minimum difference (>= 0)
 - Maximum difference (>= Minimum difference)
+- Verbose mode (1: on, 0: off)
 
 The program will try to solve the puzzle from minimum difference to maximum difference incrementally until a solution is found.
