@@ -20,6 +20,12 @@ struct tile_s {
 	tile_t *next;
 };
 
+typedef struct {
+	int slot_start;
+	tile_t *tile;
+}
+choice_t;
+
 typedef struct node_s node_t;
 
 struct node_s {
@@ -27,8 +33,7 @@ struct node_s {
 		int rows_n;
 		node_t *column;
 	};
-	int slot_start;
-	tile_t *tile;
+	choice_t *choice;
 	node_t *left;
 	node_t *right;
 	node_t *top;
@@ -48,7 +53,8 @@ void generate_heights_set(int, int, tile_t *, int, int, int, int);
 void generate_widths_set(int, int, tile_t *, int, int, int);
 int is_square(tile_t *);
 void set_slot_row_nodes(int, int, int, int, int);
-void set_row_node(int, int, int, int, int, node_t *);
+void set_choice_cur(int, int, int, int);
+void set_row_node(int, node_t *);
 void link_left(node_t *, node_t *);
 void link_top(node_t *, node_t *);
 void insert_height(tile_t *, int, int);
@@ -62,11 +68,13 @@ int dlx_search(int);
 void print_option(tile_t *);
 int set_column_value(node_t *);
 int set_row_value(node_t *);
+void assign_choice(choice_t *);
 void cover_column(node_t *);
 void uncover_column(node_t *);
 
-int square_order, delta_min, verbose, square_area, *slots, nodes_max, column_nodes_max, tiles_n, tiles_area_sum, cost;
+int square_order, delta_min, verbose, square_area, *slots, choices_max, nodes_max, column_nodes_max, tiles_n, tiles_area_sum, cost;
 tile_t *tiles, *heights, *widths, **options;
+choice_t *choices, *choice_cur;
 node_t *nodes, **tops, *header, *row_node;
 
 int main(void) {
@@ -109,10 +117,21 @@ int main(void) {
 		free(tiles);
 		return EXIT_FAILURE;
 	}
+	choices = malloc(sizeof(choice_t));
+	if (!choices) {
+		fprintf(stderr, "Could not allocate memory for choices\n");
+		fflush(stderr);
+		free(slots);
+		free(options);
+		free(tiles);
+		return EXIT_FAILURE;
+	}
+	choices_max = 1;
 	nodes = malloc(sizeof(node_t));
 	if (!nodes) {
 		fprintf(stderr, "Could not allocate memory for nodes\n");
 		fflush(stderr);
+		free(choices);
 		free(slots);
 		free(options);
 		free(tiles);
@@ -124,6 +143,7 @@ int main(void) {
 		fprintf(stderr, "Could not allocate memory for tops\n");
 		fflush(stderr);
 		free(nodes);
+		free(choices);
 		free(slots);
 		free(options);
 		free(tiles);
@@ -178,6 +198,7 @@ int main(void) {
 	while (!r && delta_min <= delta_max);
 	free(tops);
 	free(nodes);
+	free(choices);
 	free(slots);
 	free(options);
 	free(tiles);
@@ -254,12 +275,24 @@ int add_option(int tiles_start, int options_n, int options_area_sum) {
 }
 
 int is_mondrian(int options_n) {
-	int column_nodes_n = square_area+options_n, nodes_n = column_nodes_n+1, option_idx, node_idx, removed, r;
+	int choices_n = 0, column_nodes_n = square_area+options_n, nodes_n = column_nodes_n+1, option_idx, node_idx, removed, r;
 	for (option_idx = 0; option_idx < options_n; option_idx++) {
+		choices_n += options[option_idx]->height_slots_n*options[option_idx]->width_slots_n;
 		nodes_n += options[option_idx]->row_nodes_n;
 		if (!is_square(options[option_idx])) {
+			choices_n += options[option_idx]->height_slots_n*options[option_idx]->width_slots_n;
 			nodes_n += options[option_idx]->row_nodes_n;
 		}
+	}
+	if (choices_n > choices_max) {
+		choice_t *choices_tmp = realloc(choices, sizeof(choice_t)*(size_t)choices_n);
+		if (!choices_tmp) {
+			fprintf(stderr, "Could not reallocate memory for choices\n");
+			fflush(stderr);
+			return -1;
+		}
+		choices = choices_tmp;
+		choices_max = choices_n;
 	}
 	if (nodes_n > nodes_max) {
 		node_t *nodes_tmp = realloc(nodes, sizeof(node_t)*(size_t)nodes_n);
@@ -291,6 +324,7 @@ int is_mondrian(int options_n) {
 		printf("set_option_row_nodes options %d\n", options_n);
 		fflush(stdout);
 	}
+	choice_cur = choices;
 	row_node = header+1;
 	for (option_idx = 0; option_idx < options_n && set_option_row_nodes(options[option_idx], options_n, option_idx); option_idx++);
 	for (node_idx = 0; node_idx < column_nodes_n; node_idx++) {
@@ -368,14 +402,11 @@ int set_option_row_nodes(tile_t *option, int options_n, int option_idx) {
 }
 
 void add_option_slots(int options_n, int option_ref, int option_idx, int heights_n, int heights_sum, int widths_n, int widths_sum) {
-	if (heights_sum > square_order || widths_sum > square_order) {
-		return;
-	}
 	if (heights_sum == square_order && widths_sum == square_order) {
 		generate_slots(heights_n, widths_n);
 		return;
 	}
-	if (option_idx == options_n) {
+	if (option_idx == options_n || heights_sum > square_order || widths_sum > square_order) {
 		return;
 	}
 	if (option_idx != option_ref) {
@@ -444,27 +475,33 @@ int is_square(tile_t *tile) {
 
 void set_slot_row_nodes(int slot_start, int height, int width, int area, int option_idx) {
 	int x, y;
-	set_row_node(slot_start, slot_start, height, width, option_idx, row_node+area);
+	set_choice_cur(slot_start, height, width, option_idx);
+	set_row_node(slot_start, row_node+area);
 	for (x = 1; x < width; x++) {
-		set_row_node(slot_start+x, slot_start, height, width, option_idx, row_node-1);
+		set_row_node(slot_start+x, row_node-1);
 	}
 	for (y = 1; y < height; y++) {
 		for (x = 0; x < width; x++) {
-			set_row_node(slot_start+y*square_order+x, slot_start, height, width, option_idx, row_node-1);
+			set_row_node(slot_start+y*square_order+x, row_node-1);
 		}
 	}
-	set_row_node(square_area+option_idx, slot_start, height, width, option_idx, row_node-1);
+	set_row_node(square_area+option_idx, row_node-1);
+	choice_cur++;
 }
 
-void set_row_node(int column, int slot_start, int height, int width, int option_idx, node_t *left) {
-	row_node->column = nodes+column;
+void set_choice_cur(int slot_start, int height, int width, int option_idx) {
 	if (height < width) {
-		row_node->slot_start = square_area+slot_start;
+		choice_cur->slot_start = square_area+slot_start;
 	}
 	else {
-		row_node->slot_start = slot_start;
+		choice_cur->slot_start = slot_start;
 	}
-	row_node->tile = options[option_idx];
+	choice_cur->tile = options[option_idx];
+}
+
+void set_row_node(int column, node_t *left) {
+	row_node->column = nodes+column;
+	row_node->choice = choice_cur;
 	link_left(row_node, left);
 	link_top(row_node, tops[column]);
 	tops[column] = row_node++;
@@ -579,7 +616,7 @@ int dlx_search(int options_n) {
 		for (node = row->right; node != row; node = node->right) {
 			cover_column(node->column);
 		}
-		row->tile->slot_start = row->slot_start;
+		assign_choice(row->choice);
 		r = dlx_search(options_n);
 		for (node = row->left; node != row; node = node->left) {
 			uncover_column(node->column);
@@ -614,6 +651,10 @@ int set_row_value(node_t *row) {
 		value += node->column->rows_n;
 	}
 	return value;
+}
+
+void assign_choice(choice_t *choice) {
+	choice->tile->slot_start = choice->slot_start;
 }
 
 void cover_column(node_t *column) {
