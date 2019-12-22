@@ -206,7 +206,7 @@ int main(void) {
 }
 
 int best_delta(int area) {
-	int area_mod = square_area%area, best, others_n, others_mod, area_other;
+	int area_mod = square_area%area, best, others_n, others_mod, delta;
 	if (area_mod == 0) {
 		return 0;
 	}
@@ -217,17 +217,17 @@ int best_delta(int area) {
 	}
 	others_mod = area_mod%others_n;
 	if (others_mod == 0) {
-		area_other = area+area_mod/others_n;
+		delta = area_mod/others_n;
 	}
 	else {
-		area_other = area+area_mod/others_n+1;
+		delta = area_mod/others_n+1;
 	}
-	if (area_other-area < best) {
-		best = area_other-area;
+	if (delta < best) {
+		best = delta;
 	}
-	area_other = (square_area-area)/(others_n+1);
-	if (area-area_other < best) {
-		best = area-area_other;
+	delta = area-(square_area-area)/(others_n+1);
+	if (delta < best) {
+		best = delta;
 	}
 	return best;
 }
@@ -551,17 +551,11 @@ int is_unique_column(node_t *column) {
 }
 
 int compare_columns(node_t *column_a, node_t *column_b) {
-	node_t *row_a;
+	node_t *row_a, *row_b;
 	if (column_a->rows_n != column_b->rows_n) {
 		return 1;
 	}
-	for (row_a = column_a->bottom; row_a != column_a; row_a = row_a->bottom) {
-		node_t *node;
-		for (node = row_a->left; node != row_a && node->column != column_b; node = node->left);
-		if (node->column != column_b) {
-			break;
-		}
-	}
+	for (row_a = column_a->bottom, row_b = column_b->bottom; row_a != column_a && row_a->choice == row_b->choice; row_a = row_a->bottom, row_b = row_b->bottom);
 	return row_a != column_a;
 }
 
