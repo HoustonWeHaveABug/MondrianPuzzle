@@ -48,7 +48,6 @@ int is_mondrian(int);
 void set_column_node(node_t *, node_t *);
 int set_option_row_nodes(tile_t *, int, int);
 void add_option_slots(int, int, int, int, int, int, int);
-void generate_slots(int, int);
 void generate_heights_set(int, int, tile_t *, int, int, int, int);
 void generate_widths_set(int, int, tile_t *, int, int, int);
 int is_square(tile_t *);
@@ -72,7 +71,7 @@ void assign_choice(choice_t *);
 void cover_column(node_t *);
 void uncover_column(node_t *);
 
-int square_order, delta_min, verbose, square_area, *slots, choices_max, nodes_max, column_nodes_max, tiles_n, tiles_area_sum, cost;
+int square_order, delta_min, verbose, square_area, *slots, choices_max, nodes_max, column_nodes_max, tiles_n, tiles_area_sum, slot_y_max0, slot_x_max0, cost;
 tile_t *tiles, *heights, *widths, **options;
 choice_t *choices, *choice_cur;
 node_t *nodes, **tops, *header, *row_node;
@@ -324,6 +323,8 @@ int is_mondrian(int options_n) {
 		printf("set_option_row_nodes options %d\n", options_n);
 		fflush(stdout);
 	}
+	slot_y_max0 = (square_order-options[0]->height)/2+1;
+	slot_x_max0 = (square_order-options[0]->width)/2+1;
 	choice_cur = choices;
 	row_node = header+1;
 	for (option_idx = 0; option_idx < options_n && set_option_row_nodes(options[option_idx], options_n, option_idx); option_idx++);
@@ -365,22 +366,22 @@ int set_option_row_nodes(tile_t *option, int options_n, int option_idx) {
 	}
 	add_option_slots(options_n, option_idx, 0, 0, options[option_idx]->height, 0, options[option_idx]->width);
 	if (option_idx == 0) {
-		slot_y_max = (square_order-options[option_idx]->height)/2+1;
-		slot_x_max = (square_order-options[option_idx]->width)/2+1;
+		slot_y_max = slot_y_max0;
+		slot_x_max = slot_x_max0;
 	}
 	else {
 		slot_y_max = square_order;
 		slot_x_max = square_order;
 	}
 	for (height_slot_idx = 0; height_slot_idx < slot_y_max; height_slot_idx++) {
-		int slot_min, width_slot_idx;
+		int slot_x_min, width_slot_idx;
 		if (option_idx == 0 && is_square(option)) {
-			slot_min = height_slot_idx;
+			slot_x_min = height_slot_idx;
 		}
 		else {
-			slot_min = 0;
+			slot_x_min = 0;
 		}
-		for (width_slot_idx = slot_min; width_slot_idx < slot_x_max; width_slot_idx++) {
+		for (width_slot_idx = slot_x_min; width_slot_idx < slot_x_max; width_slot_idx++) {
 			if (slots[height_slot_idx*square_order+width_slot_idx]) {
 				set_slot_row_nodes(height_slot_idx*square_order+width_slot_idx, option->height, option->width, option->area, option_idx);
 				rows_n++;
@@ -403,7 +404,10 @@ int set_option_row_nodes(tile_t *option, int options_n, int option_idx) {
 
 void add_option_slots(int options_n, int option_ref, int option_idx, int heights_n, int heights_sum, int widths_n, int widths_sum) {
 	if (heights_sum == square_order && widths_sum == square_order) {
-		generate_slots(heights_n, widths_n);
+		int heights_set_max;
+		for (heights_set_max = 0; heights_set_max <= heights_n; heights_set_max++) {
+			generate_heights_set(heights_n, 0, heights->next, heights_set_max, 0, 0, widths_n);
+		}
 		return;
 	}
 	if (option_idx == options_n || heights_sum > square_order || widths_sum > square_order) {
@@ -416,7 +420,7 @@ void add_option_slots(int options_n, int option_ref, int option_idx, int heights
 		insert_width(options[option_idx], options[option_idx]->height, options[option_idx]->width);
 		add_option_slots(options_n, option_ref, option_idx+1, heights_n, heights_sum, widths_n+1, widths_sum+options[option_idx]->width);
 		remove_side(options[option_idx]);
-		if (!is_square(options[option_idx])) {
+		if (option_idx > 0 && !is_square(options[option_idx])) {
 			insert_height(options[option_idx], options[option_idx]->width, options[option_idx]->height);
 			add_option_slots(options_n, option_ref, option_idx+1, heights_n+1, heights_sum+options[option_idx]->width, widths_n, widths_sum);
 			remove_side(options[option_idx]);
@@ -428,43 +432,34 @@ void add_option_slots(int options_n, int option_ref, int option_idx, int heights
 	add_option_slots(options_n, option_ref, option_idx+1, heights_n, heights_sum, widths_n, widths_sum);
 }
 
-void generate_slots(int heights_n, int widths_n) {
-	int heights_set_max;
-	for (heights_set_max = 0; heights_set_max <= heights_n; heights_set_max++) {
-		generate_heights_set(heights_n, 0, heights->next, heights_set_max, 0, 0, widths_n);
-	}
-}
-
 void generate_heights_set(int heights_n, int heights_start_idx, tile_t *heights_start, int heights_set_max, int heights_set_cur, int slot_idx, int widths_n) {
+	int heights_idx;
+	tile_t *tile;
 	if (heights_set_cur == heights_set_max) {
 		int widths_set_max;
 		slot_idx *= square_order;
 		for (widths_set_max = 0; widths_set_max <= widths_n; widths_set_max++) {
 			generate_widths_set(widths_n, 0, widths->next, widths_set_max, 0, slot_idx);
 		}
+		return;
 	}
-	else {
-		int heights_idx;
-		tile_t *tile;
-		for (heights_idx = heights_start_idx, tile = heights_start; heights_idx <= heights_n-heights_set_max+heights_set_cur; heights_idx++, tile = tile->next) {
-			if (tile == heights_start || tile->slot_height < tile->last->slot_height) {
-				generate_heights_set(heights_n, heights_idx+1, tile->next, heights_set_max, heights_set_cur+1, slot_idx+tile->slot_height, widths_n);
-			}
+	for (heights_idx = heights_start_idx, tile = heights_start; heights_idx <= heights_n-heights_set_max+heights_set_cur; heights_idx++, tile = tile->next) {
+		if (tile == heights_start || tile->slot_height < tile->last->slot_height) {
+			generate_heights_set(heights_n, heights_idx+1, tile->next, heights_set_max, heights_set_cur+1, slot_idx+tile->slot_height, widths_n);
 		}
 	}
 }
 
 void generate_widths_set(int widths_n, int widths_start_idx, tile_t *widths_start, int widths_set_max, int widths_set_cur, int slot_idx) {
+	int widths_idx;
+	tile_t *tile;
 	if (widths_set_cur == widths_set_max) {
 		slots[slot_idx] = 1;
+		return;
 	}
-	else {
-		int widths_idx;
-		tile_t *tile;
-		for (widths_idx = widths_start_idx, tile = widths_start; widths_idx <= widths_n-widths_set_max+widths_set_cur; widths_idx++, tile = tile->next) {
-			if (tile == widths_start || tile->slot_width < tile->last->slot_width) {
-				generate_widths_set(widths_n, widths_idx+1, tile->next, widths_set_max, widths_set_cur+1, slot_idx+tile->slot_width);
-			}
+	for (widths_idx = widths_start_idx, tile = widths_start; widths_idx <= widths_n-widths_set_max+widths_set_cur; widths_idx++, tile = tile->next) {
+		if (tile == widths_start || tile->slot_width < tile->last->slot_width) {
+			generate_widths_set(widths_n, widths_idx+1, tile->next, widths_set_max, widths_set_cur+1, slot_idx+tile->slot_width);
 		}
 	}
 }
