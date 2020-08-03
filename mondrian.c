@@ -9,7 +9,6 @@ struct tile_s {
 	int height;
 	int width;
 	int area;
-	int area_sum;
 	int height_slots_n;
 	int width_slots_n;
 	int row_nodes_n;
@@ -71,13 +70,13 @@ void assign_choice(choice_t *);
 void cover_column(node_t *);
 void uncover_column(node_t *);
 
-int square_order, delta_min, verbose, square_area, *slots, choices_max, nodes_max, column_nodes_max, tiles_n, tiles_area_sum, slot_y_max0, slot_x_max0, cost;
+int square_order, delta_min, verbose, square_area, *slots, choices_max, nodes_max, column_nodes_max, tiles_n, slot_y_max0, slot_x_max0, cost;
 tile_t *tiles, *heights, *widths, **options;
 choice_t *choices, *choice_cur;
 node_t *nodes, **tops, *header, *row_node;
 
 int main(void) {
-	int delta_max, tiles_max, height, width, tile_idx, r;
+	int delta_max, tiles_max, height, width, r;
 	if (scanf("%d%d%d%d", &square_order, &delta_min, &delta_max, &verbose) != 4 || square_order < SQUARE_ORDER_MIN || delta_min < 0 || delta_max < delta_min) {
 		fprintf(stderr, "Invalid parameters\n");
 		fflush(stderr);
@@ -182,11 +181,6 @@ int main(void) {
 			}
 		}
 		qsort(tiles, (size_t)tiles_n, sizeof(tile_t), compare_tiles);
-		tiles_area_sum = 0;
-		for (tile_idx = 0; tile_idx < tiles_n; tile_idx++) {
-			tiles_area_sum += tiles[tile_idx].area;
-			tiles[tile_idx].area_sum = tiles_area_sum;
-		}
 		printf("%d tiles %d\n", delta_min, tiles_n);
 		fflush(stdout);
 		r = add_option(0, 0, 0);
@@ -249,10 +243,10 @@ int compare_tiles(const void *a, const void *b) {
 }
 
 int add_option(int tiles_start, int options_n, int options_area_sum) {
-	int r = 0, tile_idx;
-	for (tile_idx = tiles_start; tile_idx < tiles_n && !r; tile_idx++) {
+	int r = 0, tile_idx1;
+	for (tile_idx1 = tiles_start; tile_idx1 < tiles_n && !r; tile_idx1++) {
 		int delta;
-		options[options_n] = tiles+tile_idx;
+		options[options_n] = tiles+tile_idx1;
 		delta = options[0]->area-options[options_n]->area;
 		if (delta > delta_min) {
 			break;
@@ -264,8 +258,12 @@ int add_option(int tiles_start, int options_n, int options_area_sum) {
 			}
 		}
 		else if (options_area_sum < square_area) {
-			if (options_area_sum+tiles_area_sum-options[options_n]->area_sum >= square_area) {
-				r = add_option(tile_idx+1, options_n+1, options_area_sum);
+			int tiles_area_sum = 0, tile_idx2;
+			for (tile_idx2 = tile_idx1+1; tile_idx2 < tiles_n && options[0]->area-tiles[tile_idx2].area <= delta_min && options_area_sum+tiles_area_sum < square_area; tile_idx2++) {
+				tiles_area_sum += tiles[tile_idx2].area;
+			}
+			if (options_area_sum+tiles_area_sum >= square_area) {
+				r = add_option(tile_idx1+1, options_n+1, options_area_sum);
 			}
 		}
 		options_area_sum -= options[options_n]->area;
@@ -420,7 +418,7 @@ void add_option_slots(int options_n, int option_ref, int option_idx, int heights
 		insert_width(options[option_idx], options[option_idx]->height, options[option_idx]->width);
 		add_option_slots(options_n, option_ref, option_idx+1, heights_n, heights_sum, widths_n+1, widths_sum+options[option_idx]->width);
 		remove_side(options[option_idx]);
-		if (option_idx > 0 && !is_square(options[option_idx])) {
+		if (!is_square(options[option_idx])) {
 			insert_height(options[option_idx], options[option_idx]->width, options[option_idx]->height);
 			add_option_slots(options_n, option_ref, option_idx+1, heights_n+1, heights_sum+options[option_idx]->width, widths_n, widths_sum);
 			remove_side(options[option_idx]);
