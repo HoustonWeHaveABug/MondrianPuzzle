@@ -4,10 +4,12 @@ Solution to challenge https://www.reddit.com/r/dailyprogrammer/comments/9dv08q/2
 
 Parameters read on standard input of the mondrian program:
 - Square order (>= 3)
-- Minimum difference (>= 0)
-- Maximum difference (>= Minimum difference)
+- Delta A (>= 0)
+- Delta B (>= 0)
 - Verbose mode (1: on, 0: off)
 
-The program will try to solve the puzzle from minimum difference to maximum difference incrementally until a solution is found.
+The program will try to solve the puzzle searching from Delta A to Delta B.
 
-The shell script mondrian_desc.sh encapsulates the solver to run a search by descending order.
+If Delta A < Delta B, search is called for each Current in range \[ Delta A + 1, Delta B + 1 \] until a solution is found with Delta < Current. This is the preferred option when searching for an optimal solution.
+
+If Delta A >= Delta B, search is called starting with Current = Delta A + 1. When a solution is found with Delta < Current, then Delta becomes the new Current. The search terminates when Current <= Delta B. This is the preferred option when searching for an approximate solution.
