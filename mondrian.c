@@ -9,6 +9,10 @@ struct tile_s {
 	int height;
 	int width;
 	int area;
+	int height_slots_sym;
+	int width_slots_sym;
+	double factor_sym;
+	int area_sum;
 	int slot_height;
 	int slot_width;
 	int slot_start;
@@ -70,7 +74,7 @@ node_t *cover_column2(node_t *);
 void uncover_column2(node_t *, node_t *);
 void uncover_column1(node_t *);
 
-int square_order, delta_a, delta_b, verbose, square_area, *slots, slots_max, choices_max, nodes_max, column_nodes_max, delta_cur, tiles_n, slot_y_max0, slot_x_max0, cost;
+int square_order, delta_a, delta_b, verbose, square_area, *slots, slots_max, choices_max, nodes_max, column_nodes_max, delta_cur, tiles_n, option_sym, cost;
 tile_t *tiles, *heights, *widths, **options;
 choice_t *choices, *choice_cur;
 node_t *nodes, **tops, *header, *row_node;
@@ -240,9 +244,16 @@ int best_delta(int area) {
 }
 
 void set_tile(tile_t *tile, int height, int width) {
+	int height_slots_n = square_order-height+1, width_slots_n = square_order-width+1;
 	tile->height = height;
 	tile->width = width;
 	tile->area = height*width;
+	tile->height_slots_sym = (square_order-height)/2+1;
+	tile->width_slots_sym = (square_order-width)/2+1;
+	tile->factor_sym = (height_slots_n/(double)tile->height_slots_sym)*(width_slots_n/(double)tile->width_slots_sym);
+	if (height == width) {
+		tile->factor_sym *= tile->height_slots_sym*2.0/(tile->height_slots_sym+1);
+	}
 }
 
 int compare_tiles(const void *a, const void *b) {
@@ -257,6 +268,15 @@ int add_option(int tiles_start, int options_n, int options_area_sum) {
 	int r = 0, tile_idx1;
 	for (tile_idx1 = tiles_start; tile_idx1 < tiles_n && !r; tile_idx1++) {
 		int delta;
+		if (options_n == 0) {
+			int tiles_area_sum = 0, tile_idx2;
+			for (tile_idx2 = tile_idx1+1; tile_idx2 < tiles_n && tiles[tile_idx1].area-tiles[tile_idx2].area < delta_cur; tile_idx2++);
+			for (tile_idx2--; tile_idx2 > tile_idx1; tile_idx2--) {
+				tiles[tile_idx2].area_sum = tiles_area_sum;
+				tiles_area_sum += tiles[tile_idx2].area;
+			}
+			tiles[tile_idx1].area_sum = tiles_area_sum;
+		}
 		options[options_n] = tiles+tile_idx1;
 		delta = options[0]->area-options[options_n]->area;
 		if (delta >= delta_cur) {
@@ -264,7 +284,7 @@ int add_option(int tiles_start, int options_n, int options_area_sum) {
 		}
 		options_area_sum += options[options_n]->area;
 		if (options_area_sum == square_area) {
-			if (is_mondrian(options_n+1)) {
+			if ((delta_a >= delta_b || delta+1 == delta_cur) && is_mondrian(options_n+1)) {
 				delta_cur = delta;
 				printf("Delta %d\n", delta_cur);
 				fflush(stdout);
@@ -272,11 +292,7 @@ int add_option(int tiles_start, int options_n, int options_area_sum) {
 			}
 		}
 		else if (options_area_sum < square_area) {
-			int tiles_area_sum = 0, tile_idx2;
-			for (tile_idx2 = tile_idx1+1; tile_idx2 < tiles_n && options[0]->area-tiles[tile_idx2].area < delta_cur && options_area_sum+tiles_area_sum < square_area; tile_idx2++) {
-				tiles_area_sum += tiles[tile_idx2].area;
-			}
-			if (options_area_sum+tiles_area_sum >= square_area) {
+			if (options_area_sum+options[options_n]->area_sum >= square_area) {
 				r = add_option(tile_idx1+1, options_n+1, options_area_sum);
 			}
 		}
@@ -286,7 +302,13 @@ int add_option(int tiles_start, int options_n, int options_area_sum) {
 }
 
 int is_mondrian(int options_n) {
-	int choices_n, column_nodes_n, nodes_n, option_idx, node_idx, removed, r;
+	int option_idx, choices_n, column_nodes_n, nodes_n, node_idx, removed, r;
+	option_sym = 0;
+	for (option_idx = 1; option_idx < options_n; option_idx++) {
+		if (options[option_idx]->factor_sym > options[option_sym]->factor_sym) {
+			option_sym = option_idx;
+		}
+	}
 	if (square_area*options_n > slots_max) {
 		int *slots_tmp = realloc(slots, sizeof(int)*(size_t)(square_area*options_n));
 		if (!slots_tmp) {
@@ -320,7 +342,7 @@ int is_mondrian(int options_n) {
 		}
 		choices_n += slots_n;
 		nodes_n += (options[option_idx]->area+1)*slots_n;
-		if (option_idx > 0 && !is_square(options[option_idx])) {
+		if (option_idx != option_sym && !is_square(options[option_idx])) {
 			choices_n += slots_n;
 			nodes_n += (options[option_idx]->area+1)*slots_n;
 		}
@@ -361,8 +383,6 @@ int is_mondrian(int options_n) {
 		set_column_node(nodes+node_idx+1, nodes+node_idx);
 		tops[node_idx] = nodes+node_idx;
 	}
-	slot_y_max0 = (square_order-options[0]->height)/2+1;
-	slot_x_max0 = (square_order-options[0]->width)/2+1;
 	choice_cur = choices;
 	row_node = header+1;
 	for (option_idx = 0; option_idx < options_n && set_option_row_nodes(options[option_idx], option_idx); option_idx++);
@@ -488,9 +508,9 @@ void set_column_node(node_t *node, node_t *left) {
 
 int set_option_row_nodes(tile_t *option, int option_idx) {
 	int rows_n = 0, slot_y_max, slot_x_max, height_slot_idx;
-	if (option_idx == 0) {
-		slot_y_max = slot_y_max0;
-		slot_x_max = slot_x_max0;
+	if (option_idx == option_sym) {
+		slot_y_max = options[option_sym]->height_slots_sym;
+		slot_x_max = options[option_sym]->width_slots_sym;
 	}
 	else {
 		slot_y_max = square_order;
@@ -498,7 +518,7 @@ int set_option_row_nodes(tile_t *option, int option_idx) {
 	}
 	for (height_slot_idx = 0; height_slot_idx < slot_y_max; height_slot_idx++) {
 		int slot_x_min, width_slot_idx;
-		if (option_idx == 0 && is_square(option)) {
+		if (option_idx == option_sym && is_square(option)) {
 			slot_x_min = height_slot_idx;
 		}
 		else {
@@ -511,7 +531,7 @@ int set_option_row_nodes(tile_t *option, int option_idx) {
 			}
 		}
 	}
-	if (option_idx > 0 && !is_square(option)) {
+	if (option_idx != option_sym && !is_square(option)) {
 		for (height_slot_idx = 0; height_slot_idx < square_order; height_slot_idx++) {
 			int width_slot_idx;
 			for (width_slot_idx = 0; width_slot_idx < square_order; width_slot_idx++) {
