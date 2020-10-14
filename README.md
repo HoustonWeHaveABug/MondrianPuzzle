@@ -2,7 +2,7 @@
 
 Solution to challenge https://www.reddit.com/r/dailyprogrammer/comments/9dv08q/20180907_challenge_367_hard_the_mondrian_puzzle/.
 
-Parameters read on standard input of the mondrian program:
+The mondrian program is the solver and expects the following parameters on standard input:
 - Square order (>= 3)
 - Rotate flag (1: on, 0: off)
 - Delta A (>= 0)
@@ -10,7 +10,7 @@ Parameters read on standard input of the mondrian program:
 - Minimum number of options (>= 0)
 - Verbose mode (1: on, 0: off)
 
-When the Rotate flag is on, the solver will consider tiles MxN and NxM identical. When it is off, they will be considered distinct.
+When Rotate flag is on, the solver will consider tiles MxN and NxM identical. When it is off, they will be considered distinct.
 
 The program will try to solve the puzzle searching from Delta A to Delta B.
 
@@ -23,3 +23,11 @@ Minimum number of options T greater than 0 can be specified to check only the se
 The bash script mondrian_order_range.sh calls the solver for every order in the range specified.
 
 A text file mondrian_achievements.txt contains optimal defects, lower bounds and upper bounds with corresponding tilings that were not yet discovered.
+
+The mondrian_view program converts the output of the solver to the resulting square display. It expects the following parameters on standard input:
+- Optimize flag (1: on, 0: off)
+- Square order (>= 3)
+- Number of tiles (2 <= T <= 52)
+- Solution output (T lines)
+
+When Optimize flag is on, the program will use the least number of symbols possible, with the constraint that tiles sharing one edge or vertex cannot use the same symbol. When it is off, one symbol per tile will be used.
