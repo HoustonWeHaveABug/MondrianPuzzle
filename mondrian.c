@@ -25,8 +25,20 @@ struct option_s {
 	int slot_height;
 	int slot_width;
 	int slot_start;
-	option_t *last;
-	option_t *next;
+	option_t *h_last;
+	option_t *h_next;
+	option_t *d_last;
+	option_t *d_next;
+};
+
+typedef struct bar_s bar_t;
+
+struct bar_s {
+	int y_slot;
+	int height;
+	int width;
+	bar_t *last;
+	bar_t *next;
 };
 
 typedef struct {
@@ -49,6 +61,8 @@ struct node_s {
 	node_t *bottom;
 };
 
+void set_bar(bar_t *, int, int, int);
+void link_bar(bar_t *, bar_t *);
 int set_tiles(void);
 void add_tiles(int);
 int best_defect(int);
@@ -57,9 +71,12 @@ int compare_tiles(const void *, const void *);
 int add_option(int, int, int);
 void set_option(option_t *, tile_t *);
 int is_mondrian(int, int);
-void link_last(option_t *, option_t *);
-int search_y_slot(int, int, int, option_t *);
-int choose_y_slot(int, int, int, option_t *, int, int);
+void link_option(option_t *, option_t *);
+void set_dominance(option_t *);
+int is_dominated(tile_t *, tile_t *);
+void insert_dominance(option_t *, option_t *, option_t *);
+int search_y_slot(int, int, int, int, int, bar_t *, option_t *);
+int choose_y_slot(int, int, int, int, int, bar_t *, option_t *, int, int);
 void set_column_node(node_t *, node_t *);
 void set_option_row_nodes(option_t *, int);
 void set_slot_row_nodes(int, int, int, int, int);
@@ -81,10 +98,11 @@ void uncover_column(node_t *);
 int is_square(tile_t *);
 void free_data(void);
 
-int square_order, rotate_flag, defect_a, defect_b, options_min, verbose_flag, square_area, *counts, tiles_max, *widths, choices_max, nodes_max, column_nodes_max, defect_cur, tiles_n;
+int square_order, rotate_flag, defect_a, defect_b, options_min, verbose_flag, square_area, *counts, tiles_max, dominances_max, choices_max, nodes_max, column_nodes_max, defect_cur, tiles_n, dominances_n;
 mp_t y_cost, x_cost;
-tile_t *tiles;
-option_t *options, *options_header, *option_sym;
+bar_t *bars, *bars_header;
+tile_t *tiles, tile_max;
+option_t *options, *options_header, *option_sym, *dominances;
 choice_t *choices, *choice_cur;
 node_t *nodes, **tops, *columns_header, *row_node;
 
@@ -95,6 +113,11 @@ int main(void) {
 		return EXIT_FAILURE;
 	}
 	square_area = square_order*square_order;
+	if (sizeof(int) > (size_t)-1/(size_t)square_area) {
+		fprintf(stderr, "Will not be able to allocate memory for counts\n");
+		fflush(stderr);
+		return EXIT_FAILURE;
+	}
 	counts = malloc(sizeof(int)*(size_t)square_area);
 	if (!counts) {
 		fprintf(stderr, "Could not allocate memory for counts\n");
@@ -109,6 +132,7 @@ int main(void) {
 		return EXIT_FAILURE;
 	}
 	tiles_max = 1;
+	set_tile(&tile_max, square_order, square_order);
 	options = malloc(sizeof(option_t)*(size_t)(tiles_max+1));
 	if (!options) {
 		fprintf(stderr, "Could not allocate memory for options\n");
@@ -117,20 +141,38 @@ int main(void) {
 		free(counts);
 		return EXIT_FAILURE;
 	}
-	widths = calloc((size_t)square_order, sizeof(int));
-	if (!widths) {
-		fprintf(stderr, "Could not allocate memory for widths\n");
+	bars = malloc(sizeof(bar_t)*(size_t)(square_order+1));
+	if (!bars) {
+		fprintf(stderr, "Could not allocate memory for bars\n");
 		fflush(stderr);
 		free(options);
 		free(tiles);
 		free(counts);
 		return EXIT_FAILURE;
 	}
+	set_bar(bars, 0, square_order, 0);
+	bars_header = bars+square_order;
+	set_bar(bars_header, square_order, 0, square_order);
+	link_bar(bars, bars_header);
+	link_bar(bars_header, bars);
+	dominances = malloc(sizeof(option_t));
+	if (!dominances) {
+		fprintf(stderr, "Could not allocate memory for dominances\n");
+		fflush(stderr);
+		free(bars);
+		free(options);
+		free(tiles);
+		free(counts);
+		return EXIT_FAILURE;
+	}
+	dominances_max = 1;
+	choices_max = 1;
 	choices = malloc(sizeof(choice_t));
 	if (!choices) {
 		fprintf(stderr, "Could not allocate memory for choices\n");
 		fflush(stderr);
-		free(widths);
+		free(dominances);
+		free(bars);
 		free(options);
 		free(tiles);
 		free(counts);
@@ -142,7 +184,8 @@ int main(void) {
 		fprintf(stderr, "Could not allocate memory for nodes\n");
 		fflush(stderr);
 		free(choices);
-		free(widths);
+		free(dominances);
+		free(bars);
 		free(options);
 		free(tiles);
 		free(counts);
@@ -155,7 +198,8 @@ int main(void) {
 		fflush(stderr);
 		free(nodes);
 		free(choices);
-		free(widths);
+		free(dominances);
+		free(bars);
 		free(options);
 		free(tiles);
 		free(counts);
@@ -193,6 +237,17 @@ int main(void) {
 	}
 	free_data();
 	return EXIT_SUCCESS;
+}
+
+void set_bar(bar_t *bar, int y_slot, int height, int width) {
+	bar->y_slot = y_slot;
+	bar->height = height;
+	bar->width = width;
+}
+
+void link_bar(bar_t *bar, bar_t *last) {
+	bar->last = last;
+	last->next = bar;
 }
 
 int set_tiles(void) {
@@ -487,7 +542,6 @@ int add_option(int tiles_start, int options_n, int options_area_sum) {
 
 void set_option(option_t *option, tile_t *tile) {
 	option->tile = tile;
-	option->y_slot = square_order;
 }
 
 int is_mondrian(int options_n, int defect) {
@@ -496,25 +550,48 @@ int is_mondrian(int options_n, int defect) {
 	if (options_n < options_min) {
 		return 0;
 	}
+	if (options_n > dominances_max) {
+		option_t *dominances_tmp = realloc(dominances, sizeof(option_t)*(size_t)options_n);
+		if (!dominances_tmp) {
+			fprintf(stderr, "Could not reallocate memory for dominances\n");
+			fflush(stderr);
+			return -1;
+		}
+		dominances = dominances_tmp;
+		dominances_max = options_n;
+	}
 	if (verbose_flag) {
 		printf("is_mondrian options %d defect %d\n", options_n, defect);
 		fflush(stdout);
 	}
 	options_header = options+options_n;
-	link_last(options, options_header);
+	link_option(options, options_header);
 	for (option_idx = 0; option_idx < options_n; option_idx++) {
-		link_last(options+option_idx+1, options+option_idx);
+		link_option(options+option_idx+1, options+option_idx);
+		set_dominance(dominances+option_idx);
 	}
 	option_sym = options;
-	for (option = options->next; option != options_header; option = option->next) {
+	for (option = options->h_next; option != options_header; option = option->h_next) {
 		if (option->tile->y_factor_sym > option_sym->tile->y_factor_sym || (option->tile->y_factor_sym == option_sym->tile->y_factor_sym && option->tile->x_factor_sym > option_sym->tile->x_factor_sym)) {
 			option_sym = option;
+		}
+	}
+	insert_dominance(option_sym, dominances->d_last, dominances);
+	dominances_n = 1;
+	for (option = options_header->h_next; option != options_header; option = option->h_next) {
+		if (option != option_sym) {
+			int dominance_idx;
+			for (dominance_idx = 1; dominance_idx < dominances_n && !is_dominated(option->tile, dominances[dominance_idx].d_last->tile); dominance_idx++);
+			insert_dominance(option, dominances[dominance_idx].d_last, dominances+dominance_idx);
+			if (dominance_idx == dominances_n) {
+				dominances_n++;
+			}
 		}
 	}
 	if (!mp_new(&y_cost)) {
 		return -1;
 	}
-	r = search_y_slot(options_n, defect, 0, options);
+	r = search_y_slot(options_n, 0, defect, 1, 0, bars, options);
 	if (verbose_flag) {
 		printf("search_y_slot ");
 		mp_print("cost", &y_cost);
@@ -524,35 +601,66 @@ int is_mondrian(int options_n, int defect) {
 	return r;
 }
 
-void link_last(option_t *option, option_t *last) {
-	option->last = last;
-	last->next = option;
+void link_option(option_t *option, option_t *last) {
+	option->h_last = last;
+	last->h_next = option;
 }
 
-int search_y_slot(int options_n, int defect, int y_last, option_t *options_start) {
-	int y_start, r;
+void set_dominance(option_t *dominance) {
+	dominance->tile = &tile_max;
+	dominance->d_last = dominance;
+	dominance->d_next = dominance;
+}
+
+int is_dominated(tile_t *tile_a, tile_t *tile_b) {
+	return tile_a->height <= tile_b->height && tile_a->width <= tile_b->width;
+}
+
+void insert_dominance(option_t *option, option_t *last, option_t *next) {
+	option->d_last = last;
+	last->d_next = option;
+	option->d_next = next;
+	next->d_last = option;
+}
+
+int search_y_slot(int options_n, int options_hi, int defect, int bars_n, int bars_hi, bar_t *bar_start_prev, option_t *options_start) {
+	int dominance_idx, r;
 	option_t *option;
+	bar_t *bar_start, *bar;
 	if (!mp_inc(&y_cost)) {
 		return -1;
 	}
-	for (y_start = y_last; y_start < square_order && widths[y_start] == square_order; y_start++);
-	if (y_start == square_order) {
+	for (bar_start = bar_start_prev; bar_start != bars_header && bar_start->width == square_order; bar_start = bar_start->next) {
+		bars_hi++;
+	}
+	if (bar_start == bars_header) {
 		int choices_n = 0, column_nodes_n = square_area+options_n, nodes_n = column_nodes_n+1, option_idx, node_idx, removed;
 		for (option_idx = 0; option_idx < options_n; option_idx++) {
 			int x_slots_n;
-			if (options+option_idx != option_sym) {
-				x_slots_n = square_order-options[option_idx].slot_width+1;
+			option = options+option_idx;
+			if (option != option_sym) {
+				x_slots_n = square_order-option->slot_width+1;
 			}
 			else {
-				if (!is_square(options[option_idx].tile)) {
-					x_slots_n = options[option_idx].tile->x_slots_sym;
+				if (!is_square(option->tile)) {
+					x_slots_n = option->tile->x_slots_sym;
 				}
 				else {
-					x_slots_n = options[option_idx].tile->x_slots_sym-options[option_idx].y_slot;
+					x_slots_n = option->tile->x_slots_sym-option->y_slot;
 				}
 			}
 			choices_n += x_slots_n;
-			nodes_n += (options[option_idx].tile->area+1)*x_slots_n;
+			if (option->tile->area+1 > INT_MAX/x_slots_n || (option->tile->area+1)*x_slots_n > INT_MAX-nodes_n) {
+				fprintf(stderr, "Too many nodes\n");
+				fflush(stderr);
+				return -1;
+			}
+			nodes_n += (option->tile->area+1)*x_slots_n;
+			if (sizeof(node_t) > (size_t)-1/(size_t)nodes_n) {
+				fprintf(stderr, "Will not be able to reallocate memory for nodes\n");
+				fflush(stderr);
+				return -1;
+			}
 		}
 		if (choices_n > choices_max) {
 			choice_t *choices_tmp = realloc(choices, sizeof(choice_t)*(size_t)choices_n);
@@ -628,52 +736,117 @@ int search_y_slot(int options_n, int defect, int y_last, option_t *options_start
 		mp_free(&x_cost);
 		return r;
 	}
-	for (option = options_header->next; option != options_header; option = option->next) {
-		if (option != option_sym) {
-			if (widths[square_order-option->tile->height] > square_order-option->tile->width && rotate_flag && widths[square_order-option->tile->width] > square_order-option->tile->height) {
-				return 0;
-			}
+	if (options_n-options_hi < bars_n-bars_hi) {
+		return 0;
+	}
+	option = dominances->d_next;
+	if (option != dominances) {
+		for (bar = bar_start; bar != bars_header && square_order-bar->width < option->tile->width; bar = bar->next);
+		if (bar == bars_header || bar->y_slot >= option->tile->y_slots_sym || square_order-bar->y_slot < option->tile->height) {
+			return 0;
 		}
-		else {
-			if (y_start >= option->tile->y_slots_sym || widths[option->tile->y_slots_sym-1] > square_order-option->tile->width) {
-				return 0;
+	}
+	for (dominance_idx = 1; dominance_idx < dominances_n; dominance_idx++) {
+		option = dominances[dominance_idx].d_next;
+		if (option != dominances+dominance_idx) {
+			if (rotate_flag) {
+				for (bar = bar_start; bar != bars_header && square_order-bar->width < option->tile->height; bar = bar->next);
+				if (bar == bars_header || square_order-bar->y_slot < option->tile->width) {
+					if (is_square(option->tile)) {
+						return 0;
+					}
+					for (; bar != bars_header && square_order-bar->width < option->tile->width; bar = bar->next);
+					if (bar == bars_header || square_order-bar->y_slot < option->tile->height) {
+						return 0;
+					}
+				}
+			}
+			else {
+				for (bar = bar_start; bar != bars_header && square_order-bar->width < option->tile->width; bar = bar->next);
+				if (bar == bars_header || square_order-bar->y_slot < option->tile->height) {
+					return 0;
+				}
 			}
 		}
 	}
-	if (y_start > y_last) {
-		options_start = options_header->next;
+	for (bar = bar_start->next; bar != bars_header; bar = bar->next) {
+		option = dominances->d_last;
+		if (option != dominances && bar->y_slot < option->tile->y_slots_sym && option->tile->height <= square_order-bar_start->y_slot && option->tile->width <= square_order-bar_start->width) {
+			continue;
+		}
+		for (dominance_idx = 1; dominance_idx < dominances_n; dominance_idx++) {
+			option = dominances[dominance_idx].d_last;
+			if (option != dominances+dominance_idx && ((option->tile->height <= square_order-bar->y_slot && option->tile->width <= square_order-bar->width) || (rotate_flag && option->tile->width <= square_order-bar->y_slot && option->tile->height <= square_order-bar->width))) {
+				break;
+			}
+		}
+		if (dominance_idx == dominances_n) {
+			return 0;
+		}
+	}
+	if (bar_start != bar_start_prev) {
+		options_start = options_header->h_next;
 	}
 	r = 0;
-	for (option = options_start; option != options_header && !r; option = option->next) {
-		r = choose_y_slot(options_n, defect, y_start, option, option->tile->height, option->tile->width);
+	for (option = options_start; option != options_header && !r; option = option->h_next) {
+		r = choose_y_slot(options_n, options_hi, defect, bars_n, bars_hi, bar_start, option, option->tile->height, option->tile->width);
 		if (rotate_flag && option != option_sym && !is_square(option->tile) && !r) {
-			r = choose_y_slot(options_n, defect, y_start, option, option->tile->width, option->tile->height);
+			r = choose_y_slot(options_n, options_hi, defect, bars_n, bars_hi, bar_start, option, option->tile->width, option->tile->height);
 		}
 	}
 	return r;
 }
 
-int choose_y_slot(int options_n, int defect, int y_start, option_t *option, int slot_height, int slot_width) {
-	int y_stop = y_start+slot_height, r = 0;
-	if (y_stop <= square_order && widths[y_start]+slot_width <= square_order) {
-		int width_idx;
-		for (width_idx = y_start; width_idx < y_stop; width_idx++) {
-			widths[width_idx] += slot_width;
+int choose_y_slot(int options_n, int options_hi, int defect, int bars_n, int bars_hi, bar_t *bar_start, option_t *option, int slot_height, int slot_width) {
+	int r = 0;
+	if (slot_height <= square_order-bar_start->y_slot && slot_width <= square_order-bar_start->width) {
+		int bar_height;
+		bar_t *bar_cur, *bar_start_last, *bar_cur_last;
+		option->y_slot = bar_start->y_slot;
+		option->slot_height = slot_height;
+		option->slot_width = slot_width;
+		option->h_last->h_next = option->h_next;
+		option->h_next->h_last = option->h_last;
+		option->d_last->d_next = option->d_next;
+		option->d_next->d_last = option->d_last;
+		bar_height = slot_height;
+		for (bar_cur = bar_start; bar_cur != bars_header && bar_cur->height <= bar_height; bar_cur = bar_cur->next) {
+			bar_height -= bar_cur->height;
+			bar_cur->width += slot_width;
 		}
-		if (width_idx == y_stop) {
-			option->y_slot = y_start;
-			option->slot_height = slot_height;
-			option->slot_width = slot_width;
-			option->last->next = option->next;
-			option->next->last = option->last;
-			r = search_y_slot(options_n, defect, y_start, option->next);
-			option->next->last = option;
-			option->last->next = option;
-			option->y_slot = square_order;
+		bar_start_last = bar_start->last;
+		bar_cur_last = bar_cur->last;
+		if (bar_height > 0) {
+			set_bar(bars+bars_n, bar_cur->y_slot, bar_height, bar_cur->width+slot_width);
+			bar_cur->y_slot += bar_height;
+			bar_cur->height -= bar_height;
+			bar_cur_last->next = bars+bars_n;
+			bars[bars_n].last = bar_cur_last;
+			bars[bars_n].next = bar_cur;
+			bar_cur->last = bars+bars_n;
+			bars_n++;
 		}
-		for (width_idx = y_start; width_idx < y_stop; width_idx++) {
-			widths[width_idx] -= slot_width;
+		if (bar_start->last == bar_start_last) {
+			r = search_y_slot(options_n, options_hi+1, defect, bars_n, bars_hi, bar_start, option->h_next);
 		}
+		else {
+			r = search_y_slot(options_n, options_hi+1, defect, bars_n, bars_hi, bar_start->last, option->h_next);
+		}
+		if (bar_height > 0) {
+			bars_n--;
+			bar_cur->last = bar_cur_last;
+			bar_cur_last->next = bar_cur;
+			bar_cur->height += bar_height;
+			bar_cur->y_slot -= bar_height;
+		}
+		for (bar_cur = bar_start; bar_cur != bars_header && bar_height < slot_height; bar_cur = bar_cur->next) {
+			bar_cur->width -= slot_width;
+			bar_height += bar_cur->height;
+		}
+		option->d_next->d_last = option;
+		option->d_last->d_next = option;
+		option->h_next->h_last = option;
+		option->h_last->h_next = option;
 	}
 	return r;
 }
@@ -916,7 +1089,8 @@ void free_data(void) {
 	free(tops);
 	free(nodes);
 	free(choices);
-	free(widths);
+	free(dominances);
+	free(bars);
 	free(options);
 	free(tiles);
 	free(counts);
