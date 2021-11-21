@@ -313,6 +313,28 @@ Upper bound 15
 Options lower bound 24
 Lower bound 14
 
+ORDER 98 - ROTATE FLAG ON
+
+Upper bound 21
+
+83x46;15x45
+9x60;40x17
+28x13;34x20
+9x49;62x11
+49x60;22x31
+9x13;19x36
+0x91;98x7
+0x77;49x14
+28x33;43x16
+9x0;53x13
+83x0;15x46
+0x0;9x77
+62x0;21x33
+71x33;12x58
+
+Options lower bound 14
+Lower bound 14
+
 ORDER 46 - ROTATE FLAG OFF
 
 Upper bound 9

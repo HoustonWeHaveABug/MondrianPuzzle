@@ -28,15 +28,20 @@ int symbols[TILES_MAX] = { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k'
 tile_t *tiles, **neighbours_cur;
 
 int main(void) {
-	int minimize, square_size, tiles_area_sum, tile_idx;
+	int minimize, square_area, tiles_area_sum, tile_idx;
 	tile_t **neighbours;
-	if (scanf("%d%d%d", &minimize, &square_order, &tiles_n) != 3 || square_order < SQUARE_ORDER_MIN || square_order > INT_MAX/square_order || tiles_n < TILES_MIN || tiles_n > TILES_MAX) {
+	if (scanf("%d%d%d", &minimize, &square_order, &tiles_n) != 3 || square_order < SQUARE_ORDER_MIN || square_order > INT32_MAX/square_order || tiles_n < TILES_MIN || tiles_n > TILES_MAX) {
 		fprintf(stderr, "Invalid square_order\n");
 		fflush(stderr);
 		return EXIT_FAILURE;
 	}
-	square_size = square_order*square_order;
-	square = calloc((size_t)square_size, sizeof(int));
+	square_area = square_order*square_order;
+	if (sizeof(int) > (size_t)-1/(size_t)square_area) {
+		fprintf(stderr, "Will not be able to allocate memory for square\n");
+		fflush(stderr);
+		return EXIT_FAILURE;
+	}
+	square = calloc((size_t)square_area, sizeof(int));
 	if (!square) {
 		fprintf(stderr, "Could not allocate memory for square\n");
 		fflush(stderr);
@@ -84,7 +89,7 @@ int main(void) {
 		set_tile(tiles+tile_idx, y0, x0, h, w);
 		tiles_area_sum += h*w;
 	}
-	if (tiles_area_sum < square_size) {
+	if (tiles_area_sum < square_area) {
 		fprintf(stderr, "Square not fully covered\n");
 		fflush(stderr);
 		free(tiles);
