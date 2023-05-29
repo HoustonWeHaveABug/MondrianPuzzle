@@ -22,6 +22,8 @@ Minimum number of options T greater than 2 can be specified to check only the se
 
 The bash script mondrian_order_range.sh calls the solver for every order in the range specified.
 
+The bash script mondrian_edpeggjr_ub.sh calls the solver from the upper bound for defect defined by Ed Pegg Jr. (n/log(n)+3 if Rotate flag is on, n/log(n) otherwise) to 0.
+
 A text file mondrian_achievements.txt contains optimal defects, lower bounds and upper bounds with the corresponding solution found by this solver.
 
 A text file mondrian_view_optimals.txt contains the optimal tilings found by this solver.
