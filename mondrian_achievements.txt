@@ -1,3 +1,11 @@
+ORDERS 3 TO 1679 - ROTATE FLAG ON
+
+No solution found with defect = 0
+
+ORDERS 6 TO 1052 - ROTATE FLAG ON
+
+No solution found with defect <= 4
+
 ORDER 58 - ROTATE FLAG ON
 
 Optimal 15
@@ -181,137 +189,418 @@ Optimal 15
 
 ORDER 66 - ROTATE FLAG ON
 
-Upper bound 15
+Optimal 14
 
-15x0;5x45
-51x29;9x25
-51x0;15x15
-20x0;7x32
-7x0;8x28
-60x29;6x37
-20x32;17x13
-37x11;5x44
-15x45;22x10
-27x0;20x11
-0x0;7x31
-47x0;4x54
-7x28;8x27
-42x54;18x12
-42x11;5x43
-0x61;42x5
-7x55;35x6
-0x31;7x30
-27x11;10x21
-51x15;15x14
-
-Options lower bound 25
-Lower bound 14
+0x0;3x59
+9x0;57x3
+9x3;3x56
+34x22;4x44
+43x3;4x43
+62x24;4x42
+38x10;5x36
+12x3;5x35
+47x12;5x34
+3x0;6x30
+3x30;6x29
+17x10;6x28
+17x3;26x7
+0x59;25x7
+38x59;24x7
+12x38;22x8
+25x46;9x20
+47x3;19x9
+52x24;10x18
+52x42;10x17
+23x22;11x16
+23x10;15x12
+38x46;14x13
+52x12;14x12
+12x46;13x13
 
 ORDER 67 - ROTATE FLAG ON
 
 Upper bound 16
 
 0x0;4x58
-11x4;8x29
-4x0;7x33
-44x22;11x21
-33x12;5x46
-4x48;23x10
-27x20;6x38
-55x22;5x45
-4x33;15x15
 11x0;56x4
-60x35;7x32
-19x20;8x28
-19x4;14x16
 0x63;55x4
+33x12;5x46
+55x22;5x45
 0x58;44x5
-38x12;22x10
-44x43;11x20
-60x4;7x31
+27x20;6x38
 38x22;6x36
+4x0;7x33
+60x4;7x32
+60x36;7x31
+11x4;8x29
+19x20;8x28
 33x4;27x8
+4x48;23x10
+38x12;22x10
+44x22;11x21
+44x43;11x20
+19x4;14x16
+4x33;15x15
 
-Options lower bound 22
-Lower bound 14
+Options lower bound 26
+Lower bound 15
 
 ORDER 68 - ROTATE FLAG ON
 
-Upper bound 16
+Optimal 16
 
-61x28;7x40
-22x4;35x8
-6x58;28x10
-0x4;14x20
-40x28;12x23
-22x12;11x25
-33x12;7x39
 0x0;68x4
-6x24;8x34
-40x12;17x16
-52x28;9x30
-34x58;27x10
-14x51;38x7
-14x37;19x14
-0x24;6x44
-14x4;8x33
-57x4;11x24
-
-Options lower bound 23
-Lower bound 15
+62x24;6x44
+0x28;7x40
+28x12;7x39
+16x51;38x7
+11x4;35x8
+54x24;8x34
+46x4;8x33
+7x28;9x30
+7x58;28x10
+35x58;27x10
+35x12;11x25
+0x4;11x24
+16x28;12x23
+54x4;14x20
+35x37;19x14
+11x12;17x16
 
 ORDER 69 - ROTATE FLAG ON
 
-Upper bound 16
+Optimal 16
 
-16x14;8x36
-7x18;9x32
-24x14;12x24
-0x0;16x18
-57x0;7x41
-64x0;5x57
-7x50;40x7
+0x0;69x4
+0x4;5x57
+62x20;7x41
+12x4;40x7
+5x4;7x39
+21x11;8x36
 0x61;35x8
-47x13;10x28
-16x0;20x14
-0x57;69x4
-24x38;23x12
-36x13;11x25
-0x18;7x39
-36x0;21x13
 35x61;34x8
-47x41;17x16
-
-Options lower bound 21
-Lower bound 14
+12x11;9x32
+52x20;10x28
+41x23;11x25
+29x23;12x24
+29x11;23x12
+41x48;21x13
+21x47;20x14
+5x43;16x18
+52x4;17x16
 
 ORDER 70 - ROTATE FLAG ON
 
-Upper bound 15
+Optimal 15
 
-9x4;11x23
-20x9;36x7
-7x49;21x12
-42x16;14x18
-20x4;50x5
-7x34;25x10
-0x66;62x4
-62x39;8x31
-7x44;49x5
-7x27;35x7
-9x0;61x4
-0x0;9x27
-20x16;22x11
-0x61;48x5
-56x9;6x40
-62x9;8x30
-32x34;24x10
-28x49;20x12
-0x27;7x34
-48x49;14x17
+0x0;4x62
+66x9;4x61
+61x20;5x50
+21x7;5x49
+4x0;5x48
+21x56;40x6
+54x20;7x36
+36x7;7x35
+9x0;34x7
+0x62;31x8
+31x62;30x8
+43x0;27x9
+26x7;10x25
+26x32;10x24
+43x9;23x11
+43x20;11x22
+9x7;12x21
+9x28;12x20
+36x42;18x14
+4x48;17x14
 
-Options lower bound 24
+ORDER 71 - ROTATE FLAG ON
+
+Upper bound 18 (=)
+
+0x0;5x71
+5x0;6x59
+19x0;52x7
+45x7;7x51
+63x26;8x45
+11x0;8x44
+35x21;10x37
+52x26;11x32
+5x59;30x12
+35x58;28x13
+19x7;26x14
+11x44;24x15
+19x21;16x23
+52x7;19x19
+
+Options lower bound 25
 Lower bound 14
+
+ORDER 72 - ROTATE FLAG ON
+
+Upper bound 19
+
+0x0;5x63
+11x0;61x5
+67x12;5x60
+5x0;6x52
+60x12;7x44
+29x5;43x7
+11x44;37x8
+25x22;35x9
+0x63;33x9
+29x12;31x10
+5x52;28x11
+48x31;12x25
+25x31;23x13
+11x22;14x22
+33x52;15x20
+48x56;19x16
+11x5;18x17
+
+Options lower bound 17
+Lower bound 15
+
+ORDER 73 - ROTATE FLAG ON
+
+Upper bound 19
+
+0x0;6x60
+55x14;6x59
+6x0;7x51
+13x0;9x40
+6x51;39x9
+45x25;10x35
+22x14;33x11
+13x40;32x11
+61x14;12x30
+61x44;12x29
+0x60;28x13
+28x60;27x13
+22x0;26x14
+48x0;25x14
+22x25;23x15
+
+Options lower bound 17
+Lower bound 14
+
+ORDER 74 - ROTATE FLAG ON
+
+Upper bound 19
+
+0x0;4x74
+68x22;6x52
+4x0;51x6
+24x16;50x6
+24x22;44x7
+4x6;7x43
+59x39;9x35
+26x54;33x9
+24x6;31x10
+38x29;30x10
+4x63;28x11
+32x63;27x11
+26x29;12x25
+11x6;13x23
+4x49;22x14
+38x39;21x15
+11x29;15x20
+55x0;19x16
+
+Options lower bound 18
+Lower bound 15
+
+ORDER 75 - ROTATE FLAG ON
+
+Upper bound 19
+
+0x57;62x5
+70x8;5x61
+24x69;51x6
+24x62;46x7
+18x50;44x7
+0x0;8x40
+36x0;39x8
+62x24;8x38
+18x40;32x10
+19x30;31x10
+8x11;11x29
+8x0;28x11
+50x24;12x26
+0x62;24x13
+36x8;14x22
+50x8;20x16
+19x11;17x19
+0x40;18x17
+
+Options lower bound 18
+Lower bound 15
+
+ORDER 76 - ROTATE FLAG ON
+
+Upper bound 18
+
+22x0;5x66
+0x0;6x55
+27x13;6x53
+70x13;6x52
+15x20;7x46
+62x25;8x40
+6x20;9x35
+15x66;32x10
+33x13;11x30
+47x65;29x11
+44x13;26x12
+27x0;25x13
+52x0;24x13
+33x43;14x23
+47x43;15x22
+0x55;15x21
+6x0;16x20
+44x25;18x18
+
+Options lower bound 18
+Lower bound 15
+
+ORDER 77 - ROTATE FLAG ON
+
+Upper bound 18
+
+8x0;69x6
+70x6;7x60
+0x0;8x54
+8x6;9x48
+17x6;43x10
+60x6;10x42
+0x66;39x11
+39x66;38x11
+35x30;12x36
+0x54;35x12
+47x16;13x32
+17x16;30x14
+17x30;18x24
+47x48;23x18
+
+Options lower bound 17
+Lower bound 15
+
+ORDER 78 - ROTATE FLAG ON
+
+Optimal 14
+
+0x0;5x72
+0x72;60x6
+5x0;21x17
+5x17;9x39
+5x56;22x16
+14x17;33x11
+14x28;13x28
+26x0;52x7
+26x7;35x10
+27x28;8x44
+35x28;12x30
+35x58;25x14
+47x17;14x26
+47x43;24x15
+60x58;18x20
+61x7;10x36
+71x7;7x51
+
+ORDER 79 - ROTATE FLAG ON
+
+Upper bound 20
+
+0x0;5x73
+0x73;60x6
+5x0;10x36
+5x36;10x37
+15x0;11x34
+15x34;12x31
+15x65;45x8
+26x0;53x7
+26x7;46x8
+26x15;19x19
+27x34;18x20
+27x54;33x11
+45x15;27x14
+45x29;15x25
+60x29;12x30
+60x59;19x20
+72x7;7x52
+
+Options lower bound 17
+Lower bound 15
+
+ORDER 80 - ROTATE FLAG ON
+
+Upper bound 18
+
+39x47;9x33
+0x61;27x11
+48x67;23x13
+5x0;75x4
+71x20;5x60
+12x11;10x30
+27x47;12x25
+48x47;15x20
+5x4;7x43
+76x4;4x76
+63x29;8x38
+57x4;19x16
+0x0;5x61
+12x41;51x6
+37x20;34x9
+5x47;22x14
+0x72;39x8
+37x29;26x12
+12x4;45x7
+22x11;35x9
+22x20;15x21
+
+Options lower bound 21
+Lower bound 15
+
+ORDER 96 - ROTATE FLAG ON
+
+Upper bound 24 (=)
+
+10x0;86x9
+0x0;10x78
+10x9;11x69
+21x9;60x13
+42x82;54x14
+81x9;15x51
+0x78;42x18
+42x41;19x41
+21x22;40x19
+61x22;20x38
+21x41;21x37
+61x60;35x22
+
+Options lower bound 18
+Lower bound 15
+
+ORDER 97 - ROTATE FLAG ON
+
+Upper bound 24 (=)
+
+0x0;40x17
+0x17;11x61
+0x78;36x19
+11x17;20x34
+11x51;25x27
+31x17;48x14
+31x31;33x20
+36x51;28x24
+36x75;31x22
+40x0;39x17
+64x31;15x44
+67x75;30x22
+79x0;18x38
+79x38;18x37
+
+Options lower bound 16
+Lower bound 15
 
 ORDER 98 - ROTATE FLAG ON
 
@@ -332,59 +621,258 @@ Upper bound 21
 62x0;21x33
 71x33;12x58
 
-Options lower bound 14
+Options lower bound 17
+Lower bound 15
+
+ORDER 99 - ROTATE FLAG ON
+
+Upper bound 26
+
+34x15;10x66
+44x26;12x55
+56x26;13x51
+86x0;13x50
+86x50;13x49
+20x34;14x47
+0x0;44x15
+69x0;17x39
+69x39;17x38
+20x81;36x18
+0x15;34x19
+0x34;20x33
+0x67;20x32
+56x77;30x22
+44x0;25x26
+
+Options lower bound 18
+Lower bound 15
+
+ORDER 100 - ROTATE FLAG ON
+
+Upper bound 24 (=)
+
+0x0;83x8
+0x8;8x82
+0x90;68x10
+8x8;75x9
+8x17;61x11
+8x28;13x51
+8x79;60x11
+21x28;48x14
+21x42;18x37
+39x42;30x22
+39x64;44x15
+68x79;32x21
+69x17;14x47
+83x0;17x40
+83x40;17x39
+
+Options lower bound 18
 Lower bound 14
+
+ORDER 101 - ROTATE FLAG ON
+
+Upper bound 21 (>)
+
+0x0;7x91
+0x91;64x10
+7x0;24x27
+7x27;12x53
+7x80;57x11
+19x27;18x36
+19x63;38x17
+31x0;70x9
+31x9;35x18
+37x27;29x22
+37x49;45x14
+57x63;37x17
+64x80;30x21
+66x9;16x40
+82x9;12x54
+94x9;7x92
+
+Options lower bound 18
+Lower bound 16
+
+ORDERS 3 TO 539 - ROTATE FLAG OFF
+
+No solution found with defect = 0
+
+ORDERS 21 TO 204 - ROTATE FLAG OFF
+
+No solution found with defect <= 4
 
 ORDER 46 - ROTATE FLAG OFF
 
 Upper bound 9
 
-0x4;35x3
-38x12;21x5
-8x24;15x7
-0x39;7x15
-3x4;5x21
-3x12;3x35
-38x33;13x8
-15x24;8x13
-28x15;17x6
-34x15;25x4
-3x19;20x5
-8x19;5x20
-3x15;4x25
-43x0;33x3
-24x0;9x11
-15x32;14x7
-35x0;12x8
-22x32;8x12
-22x40;6x16
-0x0;4x24
-3x9;3x32
+0x4;3x35
+3x12;35x3
+43x0;3x33
+3x9;32x3
+34x15;4x25
+3x15;25x4
+0x0;24x4
+38x12;5x21
+3x4;21x5
+3x19;5x20
+8x19;20x5
+28x15;6x17
+22x40;16x6
+8x24;7x15
+0x39;15x7
+15x32;7x14
+38x33;8x13
+15x24;13x8
+35x0;8x12
+22x32;12x8
+24x0;11x9
 
 Options lower bound 28
 Lower bound 8
 
 ORDER 47 - ROTATE FLAG OFF
 
+Upper bound 9
+
+44x0;3x44
+3x44;44x3
+0x4;3x43
+40x11;4x33
+0x0;32x4
+3x39;26x5
+3x17;22x6
+34x11;6x21
+13x11;21x6
+13x4;19x7
+11x32;18x7
+3x23;8x16
+25x17;9x15
+11x23;14x9
+3x4;10x13
+29x32;11x12
+32x0;12x11
+
+Options lower bound 29
+Lower bound 8
+
+ORDER 48 - ROTATE FLAG OFF
+
 Upper bound 10
 
-3x0;34x4
-7x0;17x8
-3x34;8x17
-0x42;5x27
-41x25;22x6
-25x12;12x11
-36x12;26x5
-15x4;13x10
-7x24;10x13
-25x4;8x16
-15x0;4x32
-0x0;42x3
-41x4;21x6
-20x24;18x7
-27x24;14x9
-27x38;9x14
-7x17;7x18
+0x0;37x4
+44x13;4x35
+9x44;35x4
+7x4;30x5
+31x9;6x24
+7x9;24x6
+0x4;7x21
+0x25;21x7
+37x13;7x20
+0x32;9x16
+21x15;10x15
+21x30;10x14
+7x15;14x10
+37x0;11x13
+31x33;13x11
+9x32;12x12
 
-Options lower bound 17
-Lower bound 7
+Options lower bound 19
+Lower bound 8
+
+ORDER 49 - ROTATE FLAG OFF
+
+Upper bound 11
+
+46x0;3x38
+0x46;38x3
+4x0;37x3
+18x7;4x30
+4x3;29x4
+0x0;4x28
+0x42;28x4
+41x0;5x23
+13x15;5x22
+0x37;22x5
+22x23;6x19
+22x17;19x6
+38x23;8x15
+33x3;8x14
+4x7;14x8
+4x15;9x13
+0x28;13x9
+28x23;10x12
+38x38;11x11
+28x35;10x11
+22x7;11x10
+
+Options lower bound 22
+Lower bound 9
+
+ORDER 50 - ROTATE FLAG OFF
+
+Upper bound 10
+
+6x0;44x3
+46x3;4x34
+13x3;33x4
+8x21;27x5
+35x15;5x26
+0x45;26x5
+40x15;6x22
+13x15;22x6
+0x0;6x21
+19x26;7x19
+0x38;19x7
+6x3;7x18
+0x21;8x17
+13x7;17x8
+30x7;16x8
+26x26;9x15
+26x41;14x9
+40x37;10x13
+8x26;11x12
+
+Options lower bound 19
+Lower bound 8
+
+ORDER 51 - ROTATE FLAG OFF
+
+Optimal 8
+
+0x27;7x24
+10x4;14x12
+24x19;11x15
+0x16;15x11
+47x10;4x41
+10x0;41x4
+15x16;9x18
+24x10;18x9
+24x4;27x6
+35x19;7x23
+42x10;5x32
+7x27;8x20
+0x0;10x16
+15x34;20x8
+15x42;32x5
+7x47;40x4
+
+ORDER 97 - ROTATE FLAG OFF
+
+Upper bound 24 (=)
+
+0x0;78x10
+18x85;65x12
+39x10;14x57
+83x41;14x56
+0x10;18x44
+39x67;44x18
+0x54;18x43
+78x0;19x41
+18x10;21x38
+18x48;21x37
+53x10;25x31
+53x41;30x26
+
+Options lower bound 15
+Lower bound 8
