@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "mp_utils.h"
 
-#define SQUARE_ORDER_MIN 3
+#define PAINT_WIDTH_MIN 3
 #define SIZE_T_MAX (size_t)-1
 #define OPTIONS_LO_MIN 2
 
@@ -33,10 +33,8 @@ struct option_s {
 	option_t *y_next;
 	option_t *d_last;
 	option_t *d_next;
-	option_t *x_out_last;
-	option_t *x_out_next;
-	option_t *x_in_last;
-	option_t *x_in_next;
+	option_t *out_last;
+	option_t *out_next;
 };
 
 typedef struct bar_s bar_t;
@@ -62,8 +60,10 @@ struct choice_s {
 static int search_defect(void);
 static void add_tiles(int);
 static void add_tile(int, int, int);
-static int check_tile(int, int, int);
-static int check_big_tile(int, int);
+static int check_tile1(int, int, int);
+static int check_tile2(int, int, int, int, int);
+static int check_big_tile1(int, int, int, int);
+static int check_big_tile2(int, int, int);
 static int best_defect(int);
 static int add_mondrian_tile(int, int, int);
 static int is_mondrian(void);
@@ -73,6 +73,7 @@ static int check_slot_height(bar_t *, int);
 static int choose_y_slot(int, bar_t *, option_t *, int, int);
 static int search_x_slot(choice_t *, choice_t *);
 static int is_valid_choice(int, int);
+static int is_valid_option(option_t *, int, int);
 static int edges_no_overlap(int, int, int, int);
 static void set_tile(tile_t *, int, int);
 static int compare_tiles(const void *, const void *);
@@ -83,8 +84,8 @@ static void restore_option_y(option_t *);
 static void link_options_y(option_t *, option_t *);
 static void insert_option_d(option_t *, option_t *, option_t *);
 static void link_options_d(option_t *, option_t *);
-static void link_options_x_out(option_t *, option_t *);
-static void link_options_x_in(option_t *, option_t *);
+static void link_options_out(option_t *, option_t *);
+static void print_option(option_t *);
 static void set_bar(bar_t *, int, int, int);
 static void insert_bar(bar_t *, bar_t *, bar_t *);
 static void link_bars(bar_t *, bar_t *);
@@ -93,33 +94,33 @@ static int compare_choices(const choice_t *, const choice_t *);
 static void insert_choice(choice_t *, choice_t *, choice_t *);
 static void link_choices(choice_t *, choice_t *);
 
-static int square_order, rotate_flag, defect_a, defect_b, options_lo, verbose_flag, square_area, *counts, tiles_max, mondrian_tiles_max, options_max, choices_max, success_tiles_n, defect_cur, mondrian_tiles_cur, tiles_n, mondrian_tiles_n, tile_stop, tiles_area, mondrian_defect, option_sym_flag, y_slot_sym_max, x_slot_sym_max, bars_n;
+static int paint_height, paint_width, rotate_flag, defect_a, defect_b, options_lo, verbose_flag, paint_area, *counts, tiles_max, mondrian_tiles_max, success_tiles_n, defect_cur, mondrian_tiles_cur, tiles_n, mondrian_tiles_n, tile_stop, tiles_area, mondrian_defect, option_sym_flag, y_slot_sym_max, y_slot_sym_max_rotated, bars_n, options_in_n, x_slot_sym_max;
 static mp_t y_cost, x_cost;
-static tile_t *tiles, **mondrian_tiles, *success_tiles, *tile_sym;
-static option_t *options, *options_header, *dominances_header, *option_sym;
+static tile_t *tiles, *success_tiles, **mondrian_tiles, *tile_sym;
+static option_t *options, **options_in, *options_header, *dominances_header, *option_sym;
 static bar_t *bars, *bars_header;
 static choice_t *choices, *choices_header;
 
 int main(void) {
-	int r;
-	if (scanf("%d%d%d%d%d%d", &square_order, &rotate_flag, &defect_a, &defect_b, &options_lo, &verbose_flag) != 6 || square_order < SQUARE_ORDER_MIN || (unsigned)square_order > SIZE_T_MAX/(unsigned)square_order || defect_a < 0 || defect_b < 0 || options_lo < OPTIONS_LO_MIN) {
-		fprintf(stderr, "Expected parameters: square_order (>= %d), rotate_flag, defect_a (>= 0), defect_b (>= 0), options_lo (>= %d), verbose_flag.\n", SQUARE_ORDER_MIN, OPTIONS_LO_MIN);
+	int choices_n, r;
+	if (scanf("%d%d%d%d%d%d%d", &paint_height, &paint_width, &rotate_flag, &defect_a, &defect_b, &options_lo, &verbose_flag) != 7 || paint_height < 1 || paint_width < PAINT_WIDTH_MIN || paint_height > paint_width || (unsigned)paint_height > SIZE_T_MAX/(unsigned)paint_width || defect_a < 0 || defect_b < 0 || options_lo < OPTIONS_LO_MIN) {
+		fprintf(stderr, "Expected parameters: paint_height (>= 1), paint_width (>= %d and >= paint_height), rotate_flag, defect_a (>= 0), defect_b (>= 0), options_lo (>= %d), verbose_flag.\n", PAINT_WIDTH_MIN, OPTIONS_LO_MIN);
 		fflush(stderr);
 		return EXIT_FAILURE;
 	}
-	square_area = square_order*square_order;
-	if (SIZE_T_MAX/(unsigned)square_area < sizeof(int)) {
+	paint_area = paint_height*paint_width;
+	if (SIZE_T_MAX/(unsigned)paint_area < sizeof(int)) {
 		fputs("Will not be able to allocate memory for counts\n", stderr);
 		fflush(stderr);
 		return EXIT_FAILURE;
 	}
-	counts = malloc(sizeof(int)*(size_t)square_area);
+	counts = malloc(sizeof(int)*(size_t)paint_area);
 	if (!counts) {
 		fputs("Could not allocate memory for counts\n", stderr);
 		fflush(stderr);
 		return EXIT_FAILURE;
 	}
-	tiles = malloc(sizeof(tile_t));
+	tiles = malloc(sizeof(tile_t)*(size_t)(1+options_lo));
 	if (!tiles) {
 		fputs("Could not allocate memory for tiles\n", stderr);
 		fflush(stderr);
@@ -127,7 +128,8 @@ int main(void) {
 		return EXIT_FAILURE;
 	}
 	tiles_max = 1;
-	mondrian_tiles = malloc(sizeof(tile_t *)*(size_t)(options_lo+1));
+	success_tiles = tiles+tiles_max;
+	mondrian_tiles = malloc(sizeof(tile_t *)*(size_t)options_lo);
 	if (!mondrian_tiles) {
 		fputs("Could not allocate memory for mondrian_tiles\n", stderr);
 		fflush(stderr);
@@ -135,7 +137,7 @@ int main(void) {
 		free(counts);
 		return EXIT_FAILURE;
 	}
-	mondrian_tiles_max = options_lo+1;
+	mondrian_tiles_max = options_lo;
 	options = malloc(sizeof(option_t)*(size_t)(options_lo*2+2));
 	if (!options) {
 		fputs("Could not allocate memory for options\n", stderr);
@@ -145,8 +147,7 @@ int main(void) {
 		free(counts);
 		return EXIT_FAILURE;
 	}
-	options_max = options_lo;
-	bars = malloc(sizeof(bar_t)*(size_t)(square_order+1));
+	bars = malloc(sizeof(bar_t)*(size_t)(paint_height+1));
 	if (!bars) {
 		fputs("Could not allocate memory for bars\n", stderr);
 		fflush(stderr);
@@ -156,14 +157,27 @@ int main(void) {
 		free(counts);
 		return EXIT_FAILURE;
 	}
-	set_bar(bars, 0, square_order, square_order);
-	bars_header = bars+square_order;
-	set_bar(bars_header, square_order, 0, 0);
+	set_bar(bars, 0, paint_height, paint_width);
+	bars_header = bars+paint_height;
+	set_bar(bars_header, paint_height, 0, 0);
 	insert_bar(bars, bars_header, bars_header);
-	choices = malloc(sizeof(choice_t)+sizeof(choice_t)*(size_t)(1+options_lo*2+1));
+	options_in = malloc(sizeof(option_t *)*(size_t)options_lo);
+	if (!options_in) {
+		fputs("Could not allocate memory for options_in\n", stderr);
+		fflush(stderr);
+		free(bars);
+		free(options);
+		free(mondrian_tiles);
+		free(tiles);
+		free(counts);
+		return EXIT_FAILURE;
+	}
+	choices_n = 1+options_lo*2;
+	choices = malloc(sizeof(choice_t)*(size_t)(choices_n+1));
 	if (!choices) {
 		fputs("Could not allocate memory for choices\n", stderr);
 		fflush(stderr);
+		free(options_in);
 		free(bars);
 		free(options);
 		free(mondrian_tiles);
@@ -171,20 +185,8 @@ int main(void) {
 		free(counts);
 		return EXIT_FAILURE;
 	}
-	choices_max = 1+options_lo*2;
+	choices_header = choices+choices_n;
 	set_choice(choices, 0, 0);
-	success_tiles = malloc(sizeof(tile_t));
-	if (!success_tiles) {
-		fputs("Could not allocate memory for success_tiles\n", stderr);
-		fflush(stderr);
-		free(choices);
-		free(bars);
-		free(options);
-		free(mondrian_tiles);
-		free(tiles);
-		free(counts);
-		return EXIT_FAILURE;
-	}
 	success_tiles_n = 0;
 	defect_cur = defect_a;
 	if (defect_a <= defect_b) {
@@ -204,7 +206,6 @@ int main(void) {
 		}
 		while (defect_cur >= defect_b && r == 1);
 	}
-	free(success_tiles);
 	free(choices);
 	free(bars);
 	free(options);
@@ -219,44 +220,99 @@ int main(void) {
 
 static int search_defect(void) {
 	int count_idx1, width, area, height;
-	for (count_idx1 = square_area; count_idx1--; ) {
+	for (count_idx1 = paint_area; count_idx1--; ) {
 		counts[count_idx1] = 0;
 	}
-	for (width = 1; width < square_order; ++width) {
+	for (width = 1; width < paint_height; ++width) {
 		area = 0;
-		for (height = 1; height < width; ++height) {
+		for (height = 1; height-width < 0; ++height) {
 			area += width;
-			if (check_tile(width, height, area)) {
+			if (best_defect(area) <= defect_cur) {
+				if (rotate_flag) {
+					if ((check_tile1(width, height, area) || check_tile1(height, width, area))) {
+						++counts[area-1];
+					}
+				}
+				else {
+					if (check_tile1(width, height, area)) {
+						++counts[area-1];
+					}
+					if (check_tile1(height, width, area)) {
+						++counts[area-1];
+					}
+				}
+			}
+		}
+		area += width;
+		if (check_tile1(width, width, area) && best_defect(area) <= defect_cur) {
+			++counts[area-1];
+		}
+	}
+	area = 0;
+	if (paint_height < paint_width) {
+		for (height = 1; height < paint_height; ++height) {
+			area += width;
+			if (best_defect(area) <= defect_cur) {
+				if (rotate_flag) {
+					if ((check_tile1(height, width, area) || check_big_tile1(paint_width, height, width, area))) {
+						++counts[area-1];
+					}
+				}
+				else {
+					if (check_tile1(height, width, area)) {
+						++counts[area-1];
+					}
+					if (check_big_tile1(paint_width, height, width, area)) {
+						++counts[area-1];
+					}
+				}
+			}
+		}
+		area += width;
+		if (check_big_tile1(paint_width, width, width, area) && best_defect(area) <= defect_cur) {
+			++counts[area-1];
+		}
+		for (++width; width < paint_width; ++width) {
+			area = 0;
+			for (height = 1; height < paint_height; ++height) {
+				area += width;
+				if (check_tile1(height, width, area) && best_defect(area) <= defect_cur) {
+					++counts[area-1];
+				}
+			}
+			area += width;
+			if (check_big_tile1(paint_width, width, height, area) && best_defect(area) <= defect_cur) {
+				++counts[area-1];
+			}
+		}
+		area = 0;
+		for (height = 1; height < paint_height; ++height) {
+			area += width;
+			if (check_big_tile1(paint_height, height, width, area) && best_defect(area) <= defect_cur) {
+				++counts[area-1];
+			}
+		}
+	}
+	else {
+		for (height = 1; height < paint_height; ++height) {
+			area += width;
+			if (check_big_tile1(paint_width, height, width, area) && best_defect(area) <= defect_cur) {
 				++counts[area-1];
 				if (!rotate_flag) {
 					++counts[area-1];
 				}
 			}
 		}
-		area += width;
-		if (check_tile(width, width, area)) {
-			++counts[area-1];
-		}
 	}
-	area = 0;
-	for (height = 1; height < square_order; ++height) {
-		area += square_order;
-		if (check_big_tile(height, area)) {
-			++counts[area-1];
-			if (!rotate_flag) {
-				++counts[area-1];
-			}
-		}
-	}
-	for (count_idx1 = square_area; count_idx1--; ) {
+	for (count_idx1 = paint_area; count_idx1--; ) {
 		if (counts[count_idx1]) {
 			int offset;
 			for (offset = count_idx1 < defect_cur ? count_idx1:defect_cur; offset >= 0; --offset) {
-				int counts_sum = 0, counts_area = 0, count_lo = count_idx1-offset, count_hi = defect_cur+count_lo < square_area ? defect_cur+count_lo:square_area-1, count_idx2;
+				int counts_sum = 0, counts_area = 0, count_lo = count_idx1-offset, count_hi = defect_cur+count_lo < paint_area ? defect_cur+count_lo:paint_area-1, count_idx2;
 				for (count_idx2 = count_lo; count_idx2 <= count_hi; ++count_idx2) {
 					counts_sum += counts[count_idx2];
 					counts_area += (count_idx2+1)*counts[count_idx2];
-					if (counts_sum >= options_lo && counts_area >= square_area) {
+					if (counts_sum >= options_lo && counts_area >= paint_area) {
 						break;
 					}
 				}
@@ -270,25 +326,77 @@ static int search_defect(void) {
 		}
 	}
 	add_tiles(0);
-	if (tiles_n > tiles_max) {
-		tile_t *tiles_tmp = realloc(tiles, sizeof(tile_t)*(size_t)tiles_n);
-		if (!tiles_tmp) {
-			fputs("Could not reallocate memory for tiles\n", stderr);
-			fflush(stderr);
-			return -1;
-		}
-		tiles = tiles_tmp;
-		tiles_max = tiles_n;
-	}
-	add_tiles(1);
-	qsort(tiles, (size_t)tiles_n, sizeof(tile_t), compare_tiles);
 	printf("Current %d Tiles %d\n", defect_cur, tiles_n);
 	fflush(stdout);
 	if (tiles_n >= options_lo) {
+		int tile_idx;
+		if (tiles_n > tiles_max) {
+			tile_t *tiles_tmp = realloc(tiles, sizeof(tile_t)*(size_t)(tiles_n+mondrian_tiles_max));
+			if (!tiles_tmp) {
+				fputs("Could not reallocate memory for tiles\n", stderr);
+				fflush(stderr);
+				return -1;
+			}
+			tiles = tiles_tmp;
+			tiles_max = tiles_n;
+			success_tiles = tiles+tiles_max;
+		}
+		add_tiles(1);
+		qsort(tiles, (size_t)tiles_n, sizeof(tile_t), compare_tiles);
+		mondrian_tiles_n = 0;
+		area = 0;
+		for (tile_idx = tiles_n-1; tile_idx >= 0 && area < paint_area; --tile_idx) {
+			++mondrian_tiles_n;
+			area += tiles[tile_idx].area;
+		}
+		if (mondrian_tiles_n > mondrian_tiles_max) {
+			int choices_n;
+			tile_t *tiles_tmp = realloc(tiles, sizeof(tile_t)*(size_t)(tiles_max+mondrian_tiles_n)), **mondrian_tiles_tmp;
+			option_t *options_tmp, **options_in_tmp;
+			choice_t *choices_tmp;
+			if (!tiles_tmp) {
+				fputs("Could not reallocate memory for tiles\n", stderr);
+				fflush(stderr);
+				return -1;
+			}
+			tiles = tiles_tmp;
+			success_tiles = tiles+tiles_max;
+			mondrian_tiles_tmp = realloc(mondrian_tiles, sizeof(tile_t *)*(size_t)mondrian_tiles_n);
+			if (!mondrian_tiles_tmp) {
+				fputs("Could not reallocate memory for mondrian_tiles\n", stderr);
+				fflush(stderr);
+				return -1;
+			}
+			mondrian_tiles = mondrian_tiles_tmp;
+			mondrian_tiles_max = mondrian_tiles_n;
+			options_tmp = realloc(options, sizeof(option_t)*(size_t)(mondrian_tiles_n*2+2));
+			if (!options_tmp) {
+				fputs("Could not reallocate memory for options\n", stderr);
+				fflush(stderr);
+				return -1;
+			}
+			options = options_tmp;
+			options_in_tmp = realloc(options_in, sizeof(option_t *)*(size_t)mondrian_tiles_n);
+			if (!options_in_tmp) {
+				fputs("Could not reallocate memory for options_in\n", stderr);
+				fflush(stderr);
+				return -1;
+			}
+			options_in = options_in_tmp;
+			choices_n = 1+mondrian_tiles_n*2;
+			choices_tmp = realloc(choices, sizeof(choice_t)*(size_t)(choices_n+1));
+			if (!choices_tmp) {
+				fputs("Could not reallocate memory for choices\n", stderr);
+				fflush(stderr);
+				return -1;
+			}
+			choices = choices_tmp;
+			choices_header = choices+choices_n;
+		}
 		mondrian_tiles_n = 0;
 		tile_stop = 0;
 		tiles_area = 0;
-		return add_mondrian_tile(0, 1, !rotate_flag);
+		return add_mondrian_tile(0, 1, paint_height == paint_width && !rotate_flag);
 	}
 	return 0;
 }
@@ -296,29 +404,84 @@ static int search_defect(void) {
 static void add_tiles(int set_flag) {
 	int width, area, height;
 	tiles_n = 0;
-	for (width = 1; width < square_order; ++width) {
+	for (width = 1; width < paint_height; ++width) {
 		area = 0;
-		for (height = 1; height < width; ++height) {
+		for (height = 1; height-width < 0; ++height) {
 			area += width;
-			if (counts[area-1] && check_tile(width, height, area)) {
-				add_tile(set_flag, height, width);
-				if (!rotate_flag) {
-					add_tile(set_flag, width, height);
+			if (counts[area-1] && best_defect(area) <= defect_cur) {
+				if (rotate_flag) {
+					if ((check_tile1(width, height, area) || check_tile1(height, width, area))) {
+						add_tile(set_flag, height, width);
+					}
+				}
+				else {
+					if (check_tile1(width, height, area)) {
+						add_tile(set_flag, width, height);
+					}
+					if (check_tile1(height, width, area)) {
+						add_tile(set_flag, height, width);
+					}
 				}
 			}
 		}
 		area += width;
-		if (counts[area-1] && check_tile(width, width, area)) {
+		if (counts[area-1] && check_tile1(width, width, area) && best_defect(area) <= defect_cur) {
 			add_tile(set_flag, width, width);
 		}
 	}
 	area = 0;
-	for (height = 1; height < square_order; ++height) {
-		area += square_order;
-		if (counts[area-1] && check_big_tile(height, area)) {
-			add_tile(set_flag, height, square_order);
-			if (!rotate_flag) {
-				add_tile(set_flag, square_order, height);
+	if (paint_height < paint_width) {
+		for (height = 1; height < paint_height; ++height) {
+			area += width;
+			if (counts[area-1] && best_defect(area) <= defect_cur) {
+				if (rotate_flag) {
+					if ((check_tile1(height, width, area) || check_big_tile1(paint_width, height, width, area))) {
+						add_tile(set_flag, height, width);
+					}
+				}
+				else {
+					if (check_tile1(height, width, area)) {
+						add_tile(set_flag, height, width);
+					}
+					if (check_big_tile1(paint_width, height, width, area)) {
+						add_tile(set_flag, width, height);
+					}
+				}
+			}
+		}
+		area += width;
+		if (counts[area-1] && check_big_tile1(paint_width, width, width, area) && best_defect(area) <= defect_cur) {
+			add_tile(set_flag, width, width);
+		}
+		for (++width; width < paint_width; ++width) {
+			area = 0;
+			for (height = 1; height < paint_height; ++height) {
+				area += width;
+				if (counts[area-1] && check_tile1(height, width, area) && best_defect(area) <= defect_cur) {
+					add_tile(set_flag, height, width);
+				}
+			}
+			area += width;
+			if (counts[area-1] && check_big_tile1(paint_width, width, height, area) && best_defect(area) <= defect_cur) {
+				add_tile(set_flag, height, width);
+			}
+		}
+		area = 0;
+		for (height = 1; height < paint_height; ++height) {
+			area += width;
+			if (counts[area-1] && check_big_tile1(paint_height, height, width, area) && best_defect(area) <= defect_cur) {
+				add_tile(set_flag, height, width);
+			}
+		}
+	}
+	else {
+		for (height = 1; height < paint_height; ++height) {
+			area += width;
+			if (counts[area-1] && check_big_tile1(paint_width, height, width, area) && best_defect(area) <= defect_cur) {
+				add_tile(set_flag, height, width);
+				if (!rotate_flag) {
+					add_tile(set_flag, width, height);
+				}
 			}
 		}
 	}
@@ -331,33 +494,38 @@ static void add_tile(int set_flag, int height, int width) {
 	++tiles_n;
 }
 
-static int check_tile(int len_max, int len_min, int area) {
-	return area-(square_order-len_max)*square_order <= defect_cur && area-len_max*(square_order-len_min) <= defect_cur && best_defect(area) <= defect_cur;
+static int check_tile1(int height, int width, int area) {
+	return check_tile2(area, paint_height-height, paint_width, height, paint_width-width) || check_tile2(area, paint_height-height, width, paint_height, paint_width-width);
 }
 
-static int check_big_tile(int len, int area) {
-	int delta = square_order-len;
-	if (delta < len) {
-		return area-delta*square_order <= defect_cur && best_defect(area) <= defect_cur;
+static int check_tile2(int area, int height_delta, int width, int height, int width_delta) {
+	return area-height_delta*width <= defect_cur && area-height*width_delta <= defect_cur;
+}
+
+static int check_big_tile1(int paint_len, int len, int big_len, int area) {
+	int delta = paint_len-len;
+	if (delta != len) {
+		return area-delta*big_len <= defect_cur;
 	}
-	if (delta == len) {
-		return area-delta*(square_order/2-1) <= defect_cur && best_defect(area) <= defect_cur;
+	if (delta < big_len) {
+		return check_big_tile2(big_len, area, delta);
 	}
-	if (delta*square_order-area <= defect_cur && best_defect(area) <= defect_cur) {
-		return 1;
+	return check_big_tile2(delta, area, big_len);
+}
+
+static int check_big_tile2(int big_len, int area, int delta) {
+	if (big_len%2 == 0) {
+		return area-delta*(big_len/2-1) <= defect_cur;
 	}
-	if (square_order%2 == 0) {
-		return area-delta*(square_order/2-1) <= defect_cur && best_defect(area) <= defect_cur;
-	}
-	return area-delta*(square_order/2) <= defect_cur && best_defect(area) <= defect_cur;
+	return area-delta*(big_len/2) <= defect_cur;
 }
 
 static int best_defect(int area) {
-	int options_n = square_area/area, area_mod, best, others_n, defect;
+	int options_n = paint_area/area, area_mod, best, others_n, defect;
 	if (options_n < options_lo) {
-		return area+(area-square_area)/(options_lo-1);
+		return area+(area-paint_area)/(options_lo-1);
 	}
-	area_mod = square_area%area;
+	area_mod = paint_area%area;
 	if (!area_mod) {
 		return 0;
 	}
@@ -367,7 +535,7 @@ static int best_defect(int area) {
 	if (defect < best) {
 		best = defect;
 	}
-	defect = area+(area-square_area)/(others_n+1);
+	defect = area+(area-paint_area)/(others_n+1);
 	if (defect < best) {
 		best = defect;
 	}
@@ -375,18 +543,7 @@ static int best_defect(int area) {
 }
 
 static int add_mondrian_tile(int tiles_start, int same_flag, int sym_flag) {
-	int r, tile_idx1;
-	if (mondrian_tiles_n == mondrian_tiles_max) {
-		tile_t **mondrian_tiles_tmp = realloc(mondrian_tiles, sizeof(tile_t *)*(size_t)(mondrian_tiles_n+1));
-		if (!mondrian_tiles_tmp) {
-			fputs("Could not reallocate memory for mondrian_tiles\n", stderr);
-			fflush(stderr);
-			return -1;
-		}
-		mondrian_tiles = mondrian_tiles_tmp;
-		mondrian_tiles_max = mondrian_tiles_n+1;
-	}
-	r = 0;
+	int r = 0, tile_idx1;
 	for (tile_idx1 = tiles_start; tile_idx1 < tiles_n && !r; ++tile_idx1) {
 		if (same_flag) {
 			if (mondrian_tiles_n < success_tiles_n) {
@@ -400,16 +557,15 @@ static int add_mondrian_tile(int tiles_start, int same_flag, int sym_flag) {
 				same_flag = 0;
 			}
 		}
-		mondrian_tiles[mondrian_tiles_n] = tiles+tile_idx1;
 		if (mondrian_tiles_n) {
 			if (sym_flag) {
-				if (tiles[tile_idx1].height <= tiles[tile_idx1].width) {
-					if (mondrian_tiles[mondrian_tiles_n-1]->height < mondrian_tiles[mondrian_tiles_n-1]->width) {
+				if (tiles[tile_idx1].delta >= 0) {
+					if (mondrian_tiles[mondrian_tiles_n-1]->delta > 0) {
 						sym_flag = 0;
 					}
 				}
 				else {
-					if (mondrian_tiles[mondrian_tiles_n-1]->height >= mondrian_tiles[mondrian_tiles_n-1]->width) {
+					if (mondrian_tiles[mondrian_tiles_n-1]->delta <= 0) {
 						continue;
 					}
 					if (tiles[tile_idx1].height != mondrian_tiles[mondrian_tiles_n-1]->width || tiles[tile_idx1].width != mondrian_tiles[mondrian_tiles_n-1]->height) {
@@ -427,41 +583,43 @@ static int add_mondrian_tile(int tiles_start, int same_flag, int sym_flag) {
 					break;
 				}
 			}
-			if (tiles_area+tiles[tile_idx1].area_left < square_area) {
+			if (tiles_area+tiles[tile_idx1].area_left < paint_area) {
 				break;
-			}
-			if (mondrian_tiles_n < mondrian_tiles_cur && tiles_area+tiles[tile_stop-mondrian_tiles_cur+mondrian_tiles_n].area_left > square_area) {
-				continue;
 			}
 		}
 		else {
-			int tile_stop_bak;
-			if (sym_flag && tiles[tile_idx1].height > tiles[tile_idx1].width) {
+			int area_left, tile_idx2;
+			if (sym_flag && tiles[tile_idx1].delta < 0) {
 				continue;
 			}
-			tile_stop_bak = tile_stop;
-			for (; tile_stop < tiles_n && tiles[tile_idx1].area-tiles[tile_stop].area <= defect_cur; ++tile_stop);
-			if (tile_stop > tile_stop_bak) {
-				int area_left = 0, tile_idx2;
-				for (tile_idx2 = tile_stop-1; tile_idx2 >= tile_idx1; tile_idx2--) {
-					if (area_left <= square_area) {
-						area_left += tiles[tile_idx2].area;
-					}
-					tiles[tile_idx2].area_left = area_left;
+			if (tile_stop < tiles_n && tiles[tile_idx1].area-tiles[tile_stop].area <= defect_cur) {
+				for (++tile_stop; tile_stop < tiles_n && tiles[tile_idx1].area-tiles[tile_stop].area <= defect_cur; ++tile_stop);
+			}
+			else {
+				for (; tile_stop > tile_idx1 && tiles[tile_idx1].area-tiles[tile_stop-1].area > defect_cur; --tile_stop);
+			}
+			area_left = 0;
+			for (tile_idx2 = tile_stop-1; tile_idx2 >= tile_idx1; --tile_idx2) {
+				if (area_left <= paint_area) {
+					area_left += tiles[tile_idx2].area;
 				}
+				tiles[tile_idx2].area_left = area_left;
 			}
 		}
-		++mondrian_tiles_n;
+		if (mondrian_tiles_n < mondrian_tiles_cur && tiles_area+tiles[tile_stop-mondrian_tiles_cur+mondrian_tiles_n].area_left > paint_area) {
+			continue;
+		}
+		mondrian_tiles[mondrian_tiles_n++] = tiles+tile_idx1;
 		tiles_area += tiles[tile_idx1].area;
-		if (mondrian_tiles_n > mondrian_tiles_cur && tiles_area <= square_area) {
+		if (mondrian_tiles_n > mondrian_tiles_cur && tiles_area <= paint_area) {
 			mondrian_tiles_cur = mondrian_tiles_n;
 			printf("Mondrian tiles %d\n", mondrian_tiles_cur);
 			fflush(stdout);
 		}
-		if (tiles_area < square_area) {
+		if (tiles_area < paint_area) {
 			r = add_mondrian_tile(tile_idx1+1, same_flag, sym_flag);
 		}
-		else if (tiles_area == square_area) {
+		else if (tiles_area == paint_area) {
 			mondrian_defect = mondrian_tiles[0]->area-tiles[tile_idx1].area;
 			if (defect_a <= defect_b) {
 				if (mondrian_defect == defect_cur) {
@@ -471,18 +629,6 @@ static int add_mondrian_tile(int tiles_start, int same_flag, int sym_flag) {
 			else {
 				if (mondrian_defect >= defect_b) {
 					r = is_mondrian();
-					if (mondrian_tiles_n > success_tiles_n && r == 1) {
-						tile_t *success_tiles_tmp = realloc(success_tiles, sizeof(tile_t)*(size_t)mondrian_tiles_n);
-						if (success_tiles_tmp) {
-							success_tiles = success_tiles_tmp;
-							success_tiles_n = mondrian_tiles_n;
-						}
-						else {
-							fputs("Could not reallocate memory for success_tiles\n", stderr);
-							fflush(stderr);
-							r = -1;
-						}
-					}
 					if (r == 1) {
 						int tile_idx2;
 						if (mondrian_tiles_n > options_lo) {
@@ -490,6 +636,9 @@ static int add_mondrian_tile(int tiles_start, int same_flag, int sym_flag) {
 						}
 						for (tile_idx2 = mondrian_tiles_n; tile_idx2--; ) {
 							success_tiles[tile_idx2] = *(mondrian_tiles[tile_idx2]);
+						}
+						if (mondrian_tiles_n > success_tiles_n) {
+							success_tiles_n = mondrian_tiles_n;
 						}
 						defect_cur = mondrian_defect-1;
 					}
@@ -505,16 +654,6 @@ static int add_mondrian_tile(int tiles_start, int same_flag, int sym_flag) {
 static int is_mondrian(void) {
 	int option_idx, dominances_n, r;
 	option_t *dominances, *option, *option_sym_d_last, *option_sym_d_next;
-	if (mondrian_tiles_n > options_max) {
-		option_t *options_tmp = realloc(options, sizeof(option_t)*(size_t)(mondrian_tiles_n*2+2));
-		if (!options_tmp) {
-			fputs("Could not reallocate memory for options\n", stderr);
-			fflush(stderr);
-			return -1;
-		}
-		options = options_tmp;
-		options_max = mondrian_tiles_n;
-	}
 	if (verbose_flag) {
 		printf("is_mondrian options %d defect %d\n", mondrian_tiles_n, mondrian_defect);
 		fflush(stdout);
@@ -531,7 +670,7 @@ static int is_mondrian(void) {
 	dominances = options_header+1;
 	dominances_n = 0;
 	for (option = options; option != options_header; option = option->y_next) {
-		for (option_idx = 0; option_idx < dominances_n && !is_dominated(option->tile, dominances[option_idx].d_last->tile); ++option_idx);
+		for (option_idx = 0; option_idx-dominances_n < 0 && !is_dominated(option->tile, dominances[option_idx].d_last->tile); ++option_idx);
 		if (option_idx == dominances_n) {
 			link_options_d(dominances+dominances_n, dominances+dominances_n);
 			++dominances_n;
@@ -551,8 +690,8 @@ static int is_mondrian(void) {
 	}
 	option_sym_flag = 1;
 	tile_sym = option_sym->tile;
-	y_slot_sym_max = (square_order-tile_sym->height)/2;
-	x_slot_sym_max = (square_order-tile_sym->width)/2;
+	y_slot_sym_max = (paint_height-tile_sym->height)/2;
+	y_slot_sym_max_rotated = (paint_height-tile_sym->width)/2;
 	option_sym_d_last = option_sym->d_last;
 	option_sym_d_next = option_sym->d_next;
 	link_options_d(option_sym_d_last, option_sym_d_next);
@@ -560,8 +699,7 @@ static int is_mondrian(void) {
 		link_options_y(option_sym_d_last->y_last, option_sym_d_last->y_next);
 	}
 	for (option = options; option != options_header; option = option->y_next) {
-		tile_t *tile = option->tile;
-		option->rotate_flag = rotate_flag && tile->height != tile->width && option != option_sym;
+		option->rotate_flag = rotate_flag && option->tile->delta && (paint_height < paint_width || option != option_sym);
 	}
 	if (verbose_flag && !mp_new(&y_cost)) {
 		return -1;
@@ -582,7 +720,7 @@ static int is_dominated(const tile_t *tile_a, const tile_t *tile_b) {
 }
 
 static int search_y_slot(int bars_hi, bar_t *bar_start_bak, option_t *options_start) {
-	int r, option_idx, choices_n;
+	int r, option_idx;
 	bar_t *bar_start;
 	if (verbose_flag && !mp_inc(&y_cost)) {
 		return -1;
@@ -597,6 +735,9 @@ static int search_y_slot(int bars_hi, bar_t *bar_start_bak, option_t *options_st
 		int x_space, x_delta, x_min, slot_height, slot_width;
 		option_t *option, *last_chance, *dominance;
 		bar_t *bar_cur, *bar_cur_next, *bar_start_next, *bar;
+		if (option_sym_flag && bar_start->y_slot > y_slot_sym_max) {
+			return 0;
+		}
 		if (bar_start != bar_start_bak) {
 			options_start = options_header->y_next;
 		}
@@ -606,7 +747,7 @@ static int search_y_slot(int bars_hi, bar_t *bar_start_bak, option_t *options_st
 				if (tile->width == bar_start->x_space && check_slot_height(bar_start, tile->height)) {
 					return choose_y_slot(bars_hi, bar_start, option, tile->height, tile->width);
 				}
-				if (option->rotate_flag && tile->height == bar_start->x_space && check_slot_height(bar_start, tile->width)) {
+				if (option->rotate_flag && (option != option_sym || bar_start->y_slot <= y_slot_sym_max_rotated) && tile->height == bar_start->x_space && check_slot_height(bar_start, tile->width)) {
 					return choose_y_slot(bars_hi, bar_start, option, tile->width, tile->height);
 				}
 			}
@@ -614,8 +755,8 @@ static int search_y_slot(int bars_hi, bar_t *bar_start_bak, option_t *options_st
 		}
 		x_space = 0;
 		x_delta = 0;
-		x_min = square_order;
-		slot_height = square_order;
+		x_min = paint_width;
+		slot_height = paint_height;
 		for (option = options_start; option != options_header; option = option->y_next) {
 			tile_t *tile = option->tile;
 			if (tile->height <= bar_start->y_space && tile->width <= bar_start->x_space) {
@@ -635,7 +776,7 @@ static int search_y_slot(int bars_hi, bar_t *bar_start_bak, option_t *options_st
 					slot_height = tile->height;
 				}
 			}
-			else if (option->rotate_flag && tile->width <= bar_start->y_space && tile->height <= bar_start->x_space) {
+			else if (option->rotate_flag && (option != option_sym || bar_start->y_slot <= y_slot_sym_max_rotated) && tile->width <= bar_start->y_space && tile->height <= bar_start->x_space) {
 				x_space += tile->height;
 				if (tile->height < x_min) {
 					x_min = tile->height;
@@ -662,19 +803,40 @@ static int search_y_slot(int bars_hi, bar_t *bar_start_bak, option_t *options_st
 		bar_start_next = bar_start->next;
 		last_chance = options_header;
 		if (option_sym_flag) {
-			for (bar = bar_start_next; bar != bars_header && bar->x_space < tile_sym->width; bar = bar->next);
-			if (bar == bars_header || bar->y_slot > y_slot_sym_max || tile_sym->height > bar->y_space) {
-				if (option_sym < options_start || bar_start->y_slot > y_slot_sym_max || tile_sym->height > bar_start->y_space || tile_sym->width > slot_width) {
-					if (slot_height) {
-						link_bars(bar_cur, bar_cur_next);
-						bar_cur->x_space += slot_width;
+			if (option_sym->rotate_flag) {
+				for (bar = bar_start_next; bar != bars_header && bar->x_space < tile_sym->height; bar = bar->next);
+				if (bar == bars_header || bar->y_slot > y_slot_sym_max_rotated || bar->y_space < tile_sym->width) {
+					for (; bar != bars_header && bar->x_space < tile_sym->width; bar = bar->next);
+					if (bar == bars_header || bar->y_slot > y_slot_sym_max || bar->y_space < tile_sym->height) {
+						if (option_sym < options_start || ((bar_start->y_slot > y_slot_sym_max_rotated || tile_sym->width > bar_start->y_space || tile_sym->height > slot_width) && (tile_sym->height > bar_start->y_space || tile_sym->width > slot_width))) {
+							if (slot_height) {
+								link_bars(bar_cur, bar_cur_next);
+								bar_cur->x_space += slot_width;
+							}
+							for (bar = bar_start; bar != bar_cur; bar = bar->next) {
+								bar->x_space += slot_width;
+							}
+							return 0;
+						}
+						last_chance = option_sym;
 					}
-					for (bar = bar_start; bar != bar_cur; bar = bar->next) {
-						bar->x_space += slot_width;
-					}
-					return 0;
 				}
-				last_chance = option_sym;
+			}
+			else {
+				for (bar = bar_start_next; bar != bars_header && bar->x_space < tile_sym->width; bar = bar->next);
+				if (bar == bars_header || bar->y_slot > y_slot_sym_max || bar->y_space < tile_sym->height) {
+					if (option_sym < options_start || tile_sym->height > bar_start->y_space || tile_sym->width > slot_width) {
+						if (slot_height) {
+							link_bars(bar_cur, bar_cur_next);
+							bar_cur->x_space += slot_width;
+						}
+						for (bar = bar_start; bar != bar_cur; bar = bar->next) {
+							bar->x_space += slot_width;
+						}
+						return 0;
+					}
+					last_chance = option_sym;
+				}
 			}
 		}
 		for (dominance = dominances_header->y_next; dominance != dominances_header; dominance = dominance->y_next) {
@@ -729,7 +891,7 @@ static int search_y_slot(int bars_hi, bar_t *bar_start_bak, option_t *options_st
 			bar->x_space += slot_width;
 		}
 		for (bar = bar_start->next; bar != bars_header; bar = bar->next) {
-			if (option_sym_flag && bar->y_slot <= y_slot_sym_max && bar->y_space >= tile_sym->height && bar->x_space >= tile_sym->width) {
+			if (option_sym_flag && ((bar->y_slot <= y_slot_sym_max && bar->y_space >= tile_sym->height && bar->x_space >= tile_sym->width) || (option_sym->rotate_flag && bar->y_slot <= y_slot_sym_max_rotated && bar->y_space >= tile_sym->width && bar->x_space >= tile_sym->height))) {
 				continue;
 			}
 			for (dominance = dominances_header->y_next; dominance != dominances_header; dominance = dominance->y_next) {
@@ -751,7 +913,7 @@ static int search_y_slot(int bars_hi, bar_t *bar_start_bak, option_t *options_st
 				x_space -= tile->width;
 				r = choose_y_slot(bars_hi, bar_start, option, tile->height, tile->width);
 			}
-			if (!r && option->rotate_flag && tile->width <= bar_start->y_space && tile->height <= bar_start->x_space) {
+			if (!r && option->rotate_flag && (option != option_sym || bar_start->y_slot <= y_slot_sym_max_rotated) && tile->width <= bar_start->y_space && tile->height <= bar_start->x_space) {
 				if (tile->height <= bar_start->y_space && tile->width <= bar_start->x_space) {
 					if (x_space+tile->height >= bar_start->x_space) {
 						r = choose_y_slot(bars_hi, bar_start, option, tile->width, tile->height);
@@ -770,27 +932,17 @@ static int search_y_slot(int bars_hi, bar_t *bar_start_bak, option_t *options_st
 	}
 	for (option_idx = mondrian_tiles_n; option_idx--; ) {
 		set_option(options+option_idx);
-		link_options_x_out(options+option_idx, options+option_idx+1);
+		link_options_out(options+option_idx, options+option_idx+1);
 	}
-	link_options_x_out(options_header, options);
-	link_options_x_in(options_header, options_header);
-	choices_n = 1+mondrian_tiles_n*2;
-	if (choices_n > choices_max) {
-		choice_t *choices_tmp = realloc(choices, sizeof(choice_t)*(size_t)(choices_n+1));
-		if (!choices_tmp) {
-			fputs("Could not reallocate memory for choices\n", stderr);
-			fflush(stderr);
-			return -1;
-		}
-		choices = choices_tmp;
-		choices_max = choices_n;
-	}
-	choices_header = choices+choices_n;
-	insert_choice(choices, choices_header, choices_header);
+	link_options_out(options_header, options);
+	options_in_n = 0;
+	x_slot_sym_max = (paint_width-option_sym->slot_width)/2;
 	if (verbose_flag && !mp_new(&x_cost)) {
 		return -1;
 	}
+	insert_choice(choices, choices_header, choices_header);
 	r = search_x_slot(choices, choices);
+	link_choices(choices_header, choices_header);
 	if (verbose_flag) {
 		fputs("search_x_slot ", stdout);
 		mp_print("cost", &x_cost);
@@ -861,11 +1013,11 @@ static int choose_y_slot(int bars_hi, bar_t *bar_start, option_t *option, int sl
 }
 
 static int search_x_slot(choice_t *choices_lo, choice_t *choices_hi) {
-	option_t *option_in;
+	int option_idx;
 	if (verbose_flag && !mp_inc(&x_cost)) {
 		return -1;
 	}
-	if (options_header->x_out_next != options_header) {
+	if (options_header->out_next != options_header) {
 		int r;
 		option_t *option_out;
 		for (; choices_lo != choices_header && !is_valid_choice(choices_lo->y_slot, choices_lo->x_slot); choices_lo = choices_lo->next);
@@ -873,27 +1025,25 @@ static int search_x_slot(choice_t *choices_lo, choice_t *choices_hi) {
 			return 0;
 		}
 		r = 0;
-		for (option_out = options_header->x_out_next; option_out != options_header; option_out = option_out->x_out_next) {
+		for (option_out = options_header->out_next; option_out != options_header; option_out = option_out->out_next) {
 			if (option_out->y_slot_lo == choices_lo->y_slot) {
 				if (option_out == option_sym && choices_lo->x_slot > x_slot_sym_max) {
 					break;
 				}
-				for (option_in = options_header->x_in_next; option_in != options_header && (edges_no_overlap(option_out->y_slot_lo, option_out->y_slot_hi, option_in->y_slot_lo, option_in->y_slot_hi) || edges_no_overlap(choices_lo->x_slot, choices_lo->x_slot+option_out->slot_width, option_in->x_slot_lo, option_in->x_slot_hi)); option_in = option_in->x_in_next);
-				if (option_in == options_header) {
-					option_t *options_x_in_last = options_header->x_in_last;
+				for (option_idx = 0; option_idx < options_in_n && (edges_no_overlap(option_out->y_slot_lo, option_out->y_slot_hi, options_in[option_idx]->y_slot_lo, options_in[option_idx]->y_slot_hi) || edges_no_overlap(choices_lo->x_slot, choices_lo->x_slot+option_out->slot_width, options_in[option_idx]->x_slot_lo, options_in[option_idx]->x_slot_hi)); ++option_idx);
+				if (option_idx == options_in_n) {
 					option_out->x_slot_lo = choices_lo->x_slot;
 					option_out->x_slot_hi = choices_lo->x_slot+option_out->slot_width;
-					link_options_x_out(option_out->x_out_last, option_out->x_out_next);
-					link_options_x_in(options_x_in_last, option_out);
-					link_options_x_in(option_out, options_header);
-					if (option_out->y_slot_hi < square_order) {
+					link_options_out(option_out->out_last, option_out->out_next);
+					options_in[options_in_n++] = option_out;
+					if (option_out->y_slot_hi < paint_height) {
 						choice_t *choice_last;
 						++choices_hi;
 						set_choice(choices_hi, option_out->y_slot_hi, option_out->x_slot_lo);
 						for (choice_last = choices_header->last; choice_last != choices_header && compare_choices(choice_last, choices_hi) > 0; choice_last = choice_last->last);
 						insert_choice(choices_hi, choice_last, choice_last->next);
 					}
-					if (option_out->x_slot_hi < square_order) {
+					if (option_out->x_slot_hi < paint_width) {
 						choice_t *choice_next;
 						++choices_hi;
 						set_choice(choices_hi, option_out->y_slot_lo, option_out->x_slot_hi);
@@ -901,17 +1051,17 @@ static int search_x_slot(choice_t *choices_lo, choice_t *choices_hi) {
 						insert_choice(choices_hi, choice_next->last, choice_next);
 					}
 					r = search_x_slot(choices_lo->next, choices_hi);
-					if (option_out->x_slot_hi < square_order) {
+					if (option_out->x_slot_hi < paint_width) {
 						link_choices(choices_hi->last, choices_hi->next);
 						--choices_hi;
 					}
-					if (option_out->y_slot_hi < square_order) {
+					if (option_out->y_slot_hi < paint_height) {
 						link_choices(choices_hi->last, choices_hi->next);
 						--choices_hi;
 					}
-					link_options_x_in(options_x_in_last, options_header);
-					option_out->x_out_next->x_out_last = option_out;
-					option_out->x_out_last->x_out_next = option_out;
+					--options_in_n;
+					option_out->out_next->out_last = option_out;
+					option_out->out_last->out_next = option_out;
 					if (r) {
 						break;
 					}
@@ -920,9 +1070,9 @@ static int search_x_slot(choice_t *choices_lo, choice_t *choices_hi) {
 		}
 		return r;
 	}
-	printf("0 %d %d\n", square_order, mondrian_tiles_n);
-	for (option_in = options_header->x_in_next; option_in != options_header; option_in = option_in->x_in_next) {
-		printf("%dx%d;%dx%d\n", option_in->y_slot_lo, option_in->x_slot_lo, option_in->slot_height, option_in->slot_width);
+	printf("0 %d %d %d\n", paint_height, paint_width, mondrian_tiles_n);
+	for (option_idx = 0; option_idx < options_in_n; ++option_idx) {
+		print_option(options_in[option_idx]);
 	}
 	printf("Defect %d\n", mondrian_defect);
 	fflush(stdout);
@@ -930,13 +1080,13 @@ static int search_x_slot(choice_t *choices_lo, choice_t *choices_hi) {
 }
 
 static int is_valid_choice(int y_slot, int x_slot) {
-	option_t *option_in;
-	for (option_in = options_header->x_in_next; option_in != options_header; option_in = option_in->x_in_next) {
-		if (option_in->y_slot_lo <= y_slot && option_in->y_slot_hi > y_slot && option_in->x_slot_lo <= x_slot && option_in->x_slot_hi > x_slot) {
-			return 0;
-		}
-	}
-	return 1;
+	int option_idx;
+	for (option_idx = 0; option_idx < options_in_n && is_valid_option(options_in[option_idx], y_slot, x_slot); ++option_idx);
+	return option_idx == options_in_n;
+}
+
+static int is_valid_option(option_t *option, int y_slot, int x_slot) {
+	return option->y_slot_lo > y_slot || option->y_slot_hi <= y_slot || option->x_slot_lo > x_slot || option->x_slot_hi <= x_slot;
 }
 
 static int edges_no_overlap(int a1, int a2, int b1, int b2) {
@@ -944,14 +1094,20 @@ static int edges_no_overlap(int a1, int a2, int b1, int b2) {
 }
 
 static void set_tile(tile_t *tile, int height, int width) {
-	int y_slots_n = square_order-height+1, x_slots_n = square_order-width+1, weight = rotate_flag && height != width ? square_order:0;
+	int y_slots_n = paint_height-height+1, x_slots_n = paint_width-width+1;
 	tile->height = height;
 	tile->width = width;
 	tile->area = height*width;
 	tile->delta = width-height;
 	tile->slots_n = y_slots_n*x_slots_n;
-	tile->y_priority = weight+y_slots_n;
+	tile->y_priority = y_slots_n;
 	tile->x_priority = x_slots_n;
+	if (rotate_flag && width <= paint_height && height <= paint_width) {
+		tile->slots_n += (paint_height-width+1)*(paint_width-height+1);
+		if (tile->delta) {
+			tile->y_priority += paint_height;
+		}
+	}
 }
 
 static int compare_tiles(const void *a, const void *b) {
@@ -1010,20 +1166,19 @@ static void link_options_d(option_t *last, option_t *next) {
 	next->d_last = last;
 }
 
-static void link_options_x_out(option_t *last, option_t *next) {
-	last->x_out_next = next;
-	next->x_out_last = last;
+static void link_options_out(option_t *last, option_t *next) {
+	last->out_next = next;
+	next->out_last = last;
 }
 
-static void link_options_x_in(option_t *last, option_t *next) {
-	last->x_in_next = next;
-	next->x_in_last = last;
+static void print_option(option_t *option) {
+	printf("%dx%d;%dx%d\n", option->y_slot_lo, option->x_slot_lo, option->slot_height, option->slot_width);
 }
 
 static void set_bar(bar_t *bar, int y_slot, int height, int x_space) {
 	bar->y_slot = y_slot;
 	bar->height = height;
-	bar->y_space = square_order-y_slot;
+	bar->y_space = paint_height-y_slot;
 	bar->x_space = x_space;
 }
 

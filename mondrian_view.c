@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define SQUARE_ORDER_MIN 3U
+#define PAINT_WIDTH_MIN 3U
 #define SIZE_T_MAX (size_t)-1
 #define TILES_MIN 2U
 #define TILES_MAX 52U
@@ -22,30 +22,30 @@ static void set_tile(tile_t *, unsigned, unsigned, unsigned, unsigned);
 static int are_neighbours(const tile_t *, const tile_t *);
 static void try_symbol(unsigned, unsigned);
 static void set_symbol(tile_t *, int);
-static void print_square(void);
+static void print_paint(void);
 
-static int symbols[TILES_MAX] = { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z' }, *square;
-static unsigned square_order, tiles_n, symbols_max;
+static int symbols[TILES_MAX] = { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z' }, *paint;
+static unsigned paint_height, paint_width, tiles_n, symbols_max;
 static tile_t *tiles, **neighbours_cur;
 
 int main(void) {
 	int minimize_flag;
-	unsigned square_area, tiles_area_sum, tile_idx;
+	unsigned paint_area, tiles_area_sum, tile_idx;
 	tile_t **neighbours;
-	if (scanf("%d%u%u", &minimize_flag, &square_order, &tiles_n) != 3 || square_order < SQUARE_ORDER_MIN || square_order > SIZE_T_MAX/square_order || tiles_n < TILES_MIN || tiles_n > TILES_MAX) {
-		fprintf(stderr, "Expected parameters: minimize_flag, square_order (>= %d), tiles_n (>= %d).\n", SQUARE_ORDER_MIN, TILES_MIN);
+	if (scanf("%d%u%u%u", &minimize_flag, &paint_height, &paint_width, &tiles_n) != 4 || paint_height < 1 || paint_width < PAINT_WIDTH_MIN || paint_height > paint_width || paint_height > SIZE_T_MAX/paint_width || tiles_n < TILES_MIN || tiles_n > TILES_MAX) {
+		fprintf(stderr, "Expected parameters: minimize_flag, paint_height (>= 1), paint_width (>= %d and >= paint_height), tiles_n (>= %d).\n", PAINT_WIDTH_MIN, TILES_MIN);
 		fflush(stderr);
 		return EXIT_FAILURE;
 	}
-	square_area = square_order*square_order;
-	if (sizeof(int) > SIZE_T_MAX/square_area) {
-		fputs("Will not be able to allocate memory for square\n", stderr);
+	paint_area = paint_height*paint_width;
+	if (sizeof(int) > SIZE_T_MAX/paint_area) {
+		fputs("Will not be able to allocate memory for paint\n", stderr);
 		fflush(stderr);
 		return EXIT_FAILURE;
 	}
-	square = calloc((size_t)square_area, sizeof(int));
-	if (!square) {
-		fputs("Could not allocate memory for square\n", stderr);
+	paint = calloc((size_t)paint_area, sizeof(int));
+	if (!paint) {
+		fputs("Could not allocate memory for paint\n", stderr);
 		fflush(stderr);
 		return EXIT_FAILURE;
 	}
@@ -53,49 +53,49 @@ int main(void) {
 	if (!tiles) {
 		fputs("Could not allocate memory for tiles\n", stderr);
 		fflush(stderr);
-		free(square);
+		free(paint);
 		return EXIT_FAILURE;
 	}
 	neighbours = malloc(sizeof(tile_t *)*(size_t)(tiles_n*(tiles_n-1U)/2U));
 	if (!neighbours) {
 		fputs("Could not allocate memory for neighbours\n", stderr);
 		fflush(stderr);
-		free(square);
+		free(paint);
 		return EXIT_FAILURE;
 	}
 	neighbours_cur = neighbours;
 	tiles_area_sum = 0U;
 	for (tile_idx = 0U; tile_idx < tiles_n; ++tile_idx) {
 		unsigned y0, x0, h, w, y;
-		if (scanf("%ux%u;%ux%u", &y0, &x0, &h, &w) != 4 || y0+h > square_order || x0+w > square_order) {
+		if (scanf("%ux%u;%ux%u", &y0, &x0, &h, &w) != 4 || y0+h > paint_height || x0+w > paint_width) {
 			fputs("Invalid tile\n", stderr);
 			fflush(stderr);
 			free(tiles);
-			free(square);
+			free(paint);
 			return EXIT_FAILURE;
 		}
 		for (y = y0; y < y0+h; ++y) {
 			unsigned x;
 			for (x = x0; x < x0+w; ++x) {
-				unsigned square_idx = y*square_order+x;
-				if (square[square_idx]) {
+				unsigned paint_idx = y*paint_width+x;
+				if (paint[paint_idx]) {
 					fprintf(stderr, "Overlap detected at %ux%u\n", y, x);
 					fflush(stderr);
 					free(tiles);
-					free(square);
+					free(paint);
 					return EXIT_FAILURE;
 				}
-				square[square_idx] = symbols[tile_idx];
+				paint[paint_idx] = symbols[tile_idx];
 			}
 		}
 		set_tile(tiles+tile_idx, y0, x0, h, w);
 		tiles_area_sum += h*w;
 	}
-	if (tiles_area_sum < square_area) {
-		fputs("Square not fully covered\n", stderr);
+	if (tiles_area_sum < paint_area) {
+		fputs("Paint not fully covered\n", stderr);
 		fflush(stderr);
 		free(tiles);
-		free(square);
+		free(paint);
 		return EXIT_FAILURE;
 	}
 	if (minimize_flag) {
@@ -103,10 +103,10 @@ int main(void) {
 		try_symbol(0U, 0U);
 	}
 	else {
-		print_square();
+		print_paint();
 	}
 	free(tiles);
-	free(square);
+	free(paint);
 	return EXIT_SUCCESS;
 }
 
@@ -148,7 +148,7 @@ static void try_symbol(unsigned tiles_hi, unsigned symbols_hi) {
 	}
 	if (tiles_hi == tiles_n) {
 		symbols_max = symbols_hi;
-		print_square();
+		print_paint();
 		return;
 	}
 	for (symbol_idx = symbols_hi+1U; symbol_idx--; ) {
@@ -172,18 +172,18 @@ static void set_symbol(tile_t *tile, int symbol) {
 	for (y = tile->y0; y < tile->y1; ++y) {
 		unsigned x;
 		for (x = tile->x0; x < tile->x1; ++x) {
-			square[y*square_order+x] = symbol;
+			paint[y*paint_width+x] = symbol;
 		}
 	}
 	tile->symbol = symbol;
 }
 
-static void print_square(void) {
+static void print_paint(void) {
 	unsigned y;
-	for (y = 0U; y < square_order; ++y) {
+	for (y = 0U; y < paint_height; ++y) {
 		unsigned x;
-		for (x = 0U; x < square_order; ++x) {
-			putchar(square[y*square_order+x]);
+		for (x = 0U; x < paint_width; ++x) {
+			putchar(paint[y*paint_width+x]);
 		}
 		puts("");
 	}

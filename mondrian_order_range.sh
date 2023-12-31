@@ -8,7 +8,7 @@ let ORDER=$1
 while [ $ORDER -le $2 ]
 do
 	echo "Order $ORDER"
-	echo $ORDER $3 $4 $5 $6 $7 | ./mondrian
+	echo $ORDER $ORDER $3 $4 $5 $6 $7 | ./mondrian
 	let ORDER=$ORDER+1
 done
 exit 0

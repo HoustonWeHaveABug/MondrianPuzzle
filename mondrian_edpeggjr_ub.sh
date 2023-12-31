@@ -12,5 +12,5 @@ then
 else
 	UB=`echo "$ORDER/l($ORDER)+4" | bc -l | sed "s/\..*//g"`
 fi
-echo $ORDER $ROTATE_FLAG $UB 0 2 0 | ./mondrian
+echo $ORDER $ORDER $ROTATE_FLAG $UB 0 2 0 | ./mondrian
 exit 0

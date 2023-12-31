@@ -582,24 +582,27 @@ Lower bound 15
 
 ORDER 97 - ROTATE FLAG ON
 
-Upper bound 24 (=)
+Upper bound 21
 
-0x0;40x17
-0x17;11x61
-0x78;36x19
-11x17;20x34
-11x51;25x27
-31x17;48x14
-31x31;33x20
-36x51;28x24
-36x75;31x22
-40x0;39x17
-64x31;15x44
-67x75;30x22
-79x0;18x38
-79x38;18x37
+0x0;70x8
+0x8;7x80
+0x88;62x9
+7x8;17x33
+7x41;17x32
+7x73;37x15
+24x8;46x12
+24x20;22x25
+24x45;20x28
+44x45;42x13
+44x58;18x30
+46x20;51x11
+46x31;40x14
+62x58;24x23
+62x81;35x16
+70x0;27x20
+86x31;11x50
 
-Options lower bound 16
+Options lower bound 18
 Lower bound 15
 
 ORDER 98 - ROTATE FLAG ON
@@ -856,6 +859,32 @@ Optimal 8
 15x34;20x8
 15x42;32x5
 7x47;40x4
+
+ORDER 52 - ROTATE FLAG OFF
+
+Upper bound 11
+
+0x0;3x48
+0x48;38x4
+3x0;15x10
+3x10;4x38
+7x10;11x14
+7x24;21x7
+7x31;9x17
+16x31;24x6
+16x37;36x4
+16x41;22x7
+18x0;17x9
+18x9;10x15
+28x9;7x22
+35x0;5x31
+38x41;14x11
+40x0;4x37
+44x0;8x19
+44x19;8x18
+
+Options lower bound 20
+Lower bound 8
 
 ORDER 97 - ROTATE FLAG OFF
 
