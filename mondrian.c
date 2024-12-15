@@ -225,7 +225,7 @@ static int search_defect(void) {
 	}
 	for (width = 1; width < paint_height; ++width) {
 		area = 0;
-		for (height = 1; height-width < 0; ++height) {
+		for (height = 1; height < width; ++height) {
 			area += width;
 			if (best_defect(area) <= defect_cur) {
 				if (rotate_flag) {
@@ -345,9 +345,9 @@ static int search_defect(void) {
 		qsort(tiles, (size_t)tiles_n, sizeof(tile_t), compare_tiles);
 		mondrian_tiles_n = 0;
 		area = 0;
-		for (tile_idx = tiles_n-1; tile_idx >= 0 && area < paint_area; --tile_idx) {
+		for (tile_idx = tiles_n; tile_idx && area < paint_area; --tile_idx) {
 			++mondrian_tiles_n;
-			area += tiles[tile_idx].area;
+			area += tiles[tile_idx-1].area;
 		}
 		if (mondrian_tiles_n > mondrian_tiles_max) {
 			int choices_n;
@@ -406,7 +406,7 @@ static void add_tiles(int set_flag) {
 	tiles_n = 0;
 	for (width = 1; width < paint_height; ++width) {
 		area = 0;
-		for (height = 1; height-width < 0; ++height) {
+		for (height = 1; height < width; ++height) {
 			area += width;
 			if (counts[area-1] && best_defect(area) <= defect_cur) {
 				if (rotate_flag) {
@@ -670,7 +670,7 @@ static int is_mondrian(void) {
 	dominances = options_header+1;
 	dominances_n = 0;
 	for (option = options; option != options_header; option = option->y_next) {
-		for (option_idx = 0; option_idx-dominances_n < 0 && !is_dominated(option->tile, dominances[option_idx].d_last->tile); ++option_idx);
+		for (option_idx = 0; option_idx < dominances_n && !is_dominated(option->tile, dominances[option_idx].d_last->tile); ++option_idx);
 		if (option_idx == dominances_n) {
 			link_options_d(dominances+dominances_n, dominances+dominances_n);
 			++dominances_n;
