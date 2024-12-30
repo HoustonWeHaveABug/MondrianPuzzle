@@ -21,9 +21,9 @@ If Defect A > Defect B, the search is called starting with Current = Defect A. W
 
 Minimum number of options T greater than 2 can be specified to check only the sets containing at least T tiles.
 
-The bash script mondrian_order_range.sh calls the solver for every orders in the range specified.
+The bash script mondrian_order_range.sh calls the solver for every squares in the order range specified.
 
-The bash script mondrian_rectangles.sh calls the solver for every rectangles in the range \[ 1xW, WxW \] for the specified width W.
+The bash script mondrian_rectangles.sh calls the solver for every rectangles in the width range specified.
 
 The bash script mondrian_edpeggjr_ub.sh calls the solver from the upper bound for defect defined by Ed Pegg Jr. (n/log(n)+3 if Rotate flag is on, n/log(n) otherwise) to 0.
 
