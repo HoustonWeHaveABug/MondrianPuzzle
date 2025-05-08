@@ -219,9 +219,9 @@ int main(void) {
 }
 
 static int search_defect(void) {
-	int count_idx1, width, area, height;
-	for (count_idx1 = paint_area; count_idx1--; ) {
-		counts[count_idx1] = 0;
+	int area, width, height;
+	for (area = paint_area; area--; ) {
+		counts[area] = 0;
 	}
 	for (width = 1; width < paint_height; ++width) {
 		area = 0;
@@ -304,24 +304,24 @@ static int search_defect(void) {
 			}
 		}
 	}
-	for (count_idx1 = paint_area; count_idx1--; ) {
-		if (counts[count_idx1]) {
+	for (area = paint_area; area--; ) {
+		if (counts[area]) {
 			int offset;
-			for (offset = count_idx1 < defect_cur ? count_idx1:defect_cur; offset >= 0; --offset) {
-				int counts_sum = 0, counts_area = 0, count_lo = count_idx1-offset, count_hi = defect_cur+count_lo < paint_area ? defect_cur+count_lo:paint_area-1, count_idx2;
-				for (count_idx2 = count_lo; count_idx2 <= count_hi; ++count_idx2) {
-					counts_sum += counts[count_idx2];
-					counts_area += (count_idx2+1)*counts[count_idx2];
+			for (offset = area < defect_cur ? area:defect_cur; offset >= 0; --offset) {
+				int counts_sum = 0, counts_area = 0, count_lo = area-offset, count_hi = defect_cur+count_lo < paint_area ? defect_cur+count_lo:paint_area-1, count_idx;
+				for (count_idx = count_lo; count_idx <= count_hi; ++count_idx) {
+					counts_sum += counts[count_idx];
+					counts_area += (count_idx+1)*counts[count_idx];
 					if (counts_sum >= options_lo && counts_area >= paint_area) {
 						break;
 					}
 				}
-				if (count_idx2 <= count_hi) {
+				if (count_idx <= count_hi) {
 					break;
 				}
 			}
 			if (offset < 0) {
-				counts[count_idx1] = 0;
+				counts[area] = 0;
 			}
 		}
 	}
@@ -956,7 +956,7 @@ static int check_slot_height(bar_t *bar_start, int slot_height) {
 static int choose_y_slot(int bars_hi, bar_t *bar_start, option_t *option, int slot_height, int slot_width) {
 	int r;
 	option_t *option_d_last = option->d_last, *option_d_next = option->d_next;
-	bar_t *bar_cur, *bar_cur_next, *bar;
+	bar_t *bar_cur, *bar;
 	option->y_slot_lo = bar_start->y_slot;
 	option->slot_height = slot_height;
 	link_options_y(option->y_last, option->y_next);
@@ -973,18 +973,18 @@ static int choose_y_slot(int bars_hi, bar_t *bar_start, option_t *option, int sl
 		slot_height -= bar_cur->height;
 		bar_cur->x_space -= slot_width;
 	}
-	bar_cur_next = bar_cur->next;
+	bar = bar_cur->next;
 	if (slot_height) {
 		set_bar(bars+bars_n, bar_cur->y_slot+slot_height, bar_cur->height-slot_height, bar_cur->x_space);
 		bar_cur->height = slot_height;
 		bar_cur->x_space -= slot_width;
-		insert_bar(bars+bars_n, bar_cur, bar_cur_next);
+		insert_bar(bars+bars_n, bar_cur, bar);
 		++bars_n;
 	}
 	r = search_y_slot(bars_hi-1, bar_start, option->y_next);
 	if (slot_height) {
 		--bars_n;
-		link_bars(bar_cur, bar_cur_next);
+		link_bars(bar_cur, bar);
 		bar_cur->x_space += slot_width;
 		bar_cur->height += bars[bars_n].height;
 	}
