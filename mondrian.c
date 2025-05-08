@@ -521,25 +521,18 @@ static int check_big_tile2(int big_len, int area, int delta) {
 }
 
 static int best_defect(int area) {
-	int options_n = paint_area/area, area_mod, best, others_n, defect;
+	int options_n = paint_area/area, area_mod, others_n, defect1, defect2;
 	if (options_n < options_lo) {
 		return area+(area-paint_area)/(options_lo-1);
 	}
 	area_mod = paint_area%area;
-	if (!area_mod) {
-		return 0;
-	}
-	best = area-area_mod;
 	others_n = options_n-1;
-	defect = area_mod%others_n ? area_mod/others_n+1:area_mod/others_n;
-	if (defect < best) {
-		best = defect;
+	defect1 = area_mod%others_n ? area_mod/others_n+1:area_mod/others_n;
+	defect2 = area+(area-paint_area)/options_n;
+	if (defect2 < defect1) {
+		return defect2;
 	}
-	defect = area+(area-paint_area)/(others_n+1);
-	if (defect < best) {
-		best = defect;
-	}
-	return best;
+	return defect1;
 }
 
 static int add_mondrian_tile(int tiles_start, int same_flag, int sym_flag) {
