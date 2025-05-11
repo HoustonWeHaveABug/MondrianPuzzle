@@ -80,11 +80,11 @@ static int choose_y_slot(int, bar_t *, option_t *, int, int);
 static int rollback_y_slot(bar_t *, bar_t *, bar_t *, int, int);
 static int search_x_slot(choice_t *, choice_t *);
 static int is_valid_choice(int, int);
-static int is_valid_option(option_t *, int, int);
+static int is_valid_option(const option_t *, int, int);
 static int edges_no_overlap(int, int, int, int);
 static void set_tile(tile_t *, int, int);
 static int compare_tiles(const void *, const void *);
-static void copy_tile(option_t *, tile_t *);
+static void copy_tile(option_t *, const tile_t *);
 static void set_option(option_t *);
 static int compare_options(const void *, const void *);
 static int compare_priorities(const option_t *, const option_t *);
@@ -93,7 +93,7 @@ static void link_options_y(option_t *, option_t *);
 static void insert_option_d(option_t *, option_t *, option_t *);
 static void link_options_d(option_t *, option_t *);
 static void link_options_out(option_t *, option_t *);
-static void print_option(option_t *);
+static void print_option(const option_t *);
 static void set_bar(bar_t *, int, int, int);
 static void insert_bar(bar_t *, bar_t *, bar_t *);
 static void link_bars(bar_t *, bar_t *);
@@ -215,6 +215,7 @@ int main(void) {
 		while (defect_cur >= defect_b && r == 1);
 	}
 	free(choices);
+	free(options_in);
 	free(bars);
 	free(options);
 	free(mondrian_tiles);
@@ -1062,7 +1063,7 @@ static int is_valid_choice(int y_slot, int x_slot) {
 	return option_idx == options_in_n;
 }
 
-static int is_valid_option(option_t *option, int y_slot, int x_slot) {
+static int is_valid_option(const option_t *option, int y_slot, int x_slot) {
 	return option->y_slot_lo > y_slot || option->y_slot_hi <= y_slot || option->x_slot_lo > x_slot || option->x_slot_hi <= x_slot;
 }
 
@@ -1098,7 +1099,7 @@ static int compare_tiles(const void *a, const void *b) {
 	return tile_b->width-tile_a->width;
 }
 
-static void copy_tile(option_t *option, tile_t *tile) {
+static void copy_tile(option_t *option, const tile_t *tile) {
 	option->height = tile->height;
 	option->width = tile->width;
 	option->area = tile->area;
@@ -1156,7 +1157,7 @@ static void link_options_out(option_t *last, option_t *next) {
 	next->out_last = last;
 }
 
-static void print_option(option_t *option) {
+static void print_option(const option_t *option) {
 	printf("%dx%d;%dx%d\n", option->y_slot_lo, option->x_slot_lo, option->slot_height, option->slot_width);
 }
 
