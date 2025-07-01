@@ -70,7 +70,9 @@ static int check_tile1(int, int, int);
 static int check_tile2(int, int, int, int, int);
 static int check_big_tile1(int, int, int, int);
 static int check_big_tile2(int, int, int);
-static int best_defect(int);
+static int get_best_defect(int);
+static int get_defect(int, int, int);
+static int is_tile(int);
 static int add_mondrian_tile(int, int, int);
 static int is_mondrian(void);
 static int is_dominated(const option_t *, const option_t *);
@@ -81,7 +83,7 @@ static int rollback_y_slot(bar_t *, bar_t *, bar_t *, int, int);
 static int search_x_slot(choice_t *, choice_t *);
 static int is_valid_choice(int, int);
 static int is_valid_option(const option_t *, int, int);
-static int edges_no_overlap(int, int, int, int);
+static int no_edges_overlap(int, int, int, int);
 static void set_tile(tile_t *, int, int);
 static int compare_tiles(const void *, const void *);
 static void copy_tile(option_t *, const tile_t *);
@@ -236,7 +238,7 @@ static int search_defect(void) {
 		area = 0;
 		for (height = 1; height < width; ++height) {
 			area += width;
-			if (best_defect(area) <= defect_cur) {
+			if (get_best_defect(area) <= defect_cur) {
 				if (rotate_flag) {
 					if ((check_tile1(width, height, area) || check_tile1(height, width, area))) {
 						++counts[area-1];
@@ -253,7 +255,7 @@ static int search_defect(void) {
 			}
 		}
 		area += width;
-		if (check_tile1(width, width, area) && best_defect(area) <= defect_cur) {
+		if (check_tile1(width, width, area) && get_best_defect(area) <= defect_cur) {
 			++counts[area-1];
 		}
 	}
@@ -261,7 +263,7 @@ static int search_defect(void) {
 	if (paint_height < paint_width) {
 		for (height = 1; height < paint_height; ++height) {
 			area += width;
-			if (best_defect(area) <= defect_cur) {
+			if (get_best_defect(area) <= defect_cur) {
 				if (rotate_flag) {
 					if ((check_tile1(height, width, area) || check_big_tile1(paint_width, height, width, area))) {
 						++counts[area-1];
@@ -278,26 +280,26 @@ static int search_defect(void) {
 			}
 		}
 		area += width;
-		if (check_big_tile1(paint_width, width, width, area) && best_defect(area) <= defect_cur) {
+		if (check_big_tile1(paint_width, width, width, area) && get_best_defect(area) <= defect_cur) {
 			++counts[area-1];
 		}
 		for (++width; width < paint_width; ++width) {
 			area = 0;
 			for (height = 1; height < paint_height; ++height) {
 				area += width;
-				if (check_tile1(height, width, area) && best_defect(area) <= defect_cur) {
+				if (check_tile1(height, width, area) && get_best_defect(area) <= defect_cur) {
 					++counts[area-1];
 				}
 			}
 			area += width;
-			if (check_big_tile1(paint_width, width, height, area) && best_defect(area) <= defect_cur) {
+			if (check_big_tile1(paint_width, width, height, area) && get_best_defect(area) <= defect_cur) {
 				++counts[area-1];
 			}
 		}
 		area = 0;
 		for (height = 1; height < paint_height; ++height) {
 			area += width;
-			if (check_big_tile1(paint_height, height, width, area) && best_defect(area) <= defect_cur) {
+			if (check_big_tile1(paint_height, height, width, area) && get_best_defect(area) <= defect_cur) {
 				++counts[area-1];
 			}
 		}
@@ -305,7 +307,7 @@ static int search_defect(void) {
 	else {
 		for (height = 1; height < paint_height; ++height) {
 			area += width;
-			if (check_big_tile1(paint_width, height, width, area) && best_defect(area) <= defect_cur) {
+			if (check_big_tile1(paint_width, height, width, area) && get_best_defect(area) <= defect_cur) {
 				++counts[area-1];
 				if (!rotate_flag) {
 					++counts[area-1];
@@ -417,7 +419,7 @@ static void add_tiles(int set_flag) {
 		area = 0;
 		for (height = 1; height < width; ++height) {
 			area += width;
-			if (counts[area-1] && best_defect(area) <= defect_cur) {
+			if (counts[area-1] && get_best_defect(area) <= defect_cur) {
 				if (rotate_flag) {
 					if ((check_tile1(width, height, area) || check_tile1(height, width, area))) {
 						add_tile(set_flag, height, width);
@@ -434,7 +436,7 @@ static void add_tiles(int set_flag) {
 			}
 		}
 		area += width;
-		if (counts[area-1] && check_tile1(width, width, area) && best_defect(area) <= defect_cur) {
+		if (counts[area-1] && check_tile1(width, width, area) && get_best_defect(area) <= defect_cur) {
 			add_tile(set_flag, width, width);
 		}
 	}
@@ -442,7 +444,7 @@ static void add_tiles(int set_flag) {
 	if (paint_height < paint_width) {
 		for (height = 1; height < paint_height; ++height) {
 			area += width;
-			if (counts[area-1] && best_defect(area) <= defect_cur) {
+			if (counts[area-1] && get_best_defect(area) <= defect_cur) {
 				if (rotate_flag) {
 					if ((check_tile1(height, width, area) || check_big_tile1(paint_width, height, width, area))) {
 						add_tile(set_flag, height, width);
@@ -459,26 +461,26 @@ static void add_tiles(int set_flag) {
 			}
 		}
 		area += width;
-		if (counts[area-1] && check_big_tile1(paint_width, width, width, area) && best_defect(area) <= defect_cur) {
+		if (counts[area-1] && check_big_tile1(paint_width, width, width, area) && get_best_defect(area) <= defect_cur) {
 			add_tile(set_flag, width, width);
 		}
 		for (++width; width < paint_width; ++width) {
 			area = 0;
 			for (height = 1; height < paint_height; ++height) {
 				area += width;
-				if (counts[area-1] && check_tile1(height, width, area) && best_defect(area) <= defect_cur) {
+				if (counts[area-1] && check_tile1(height, width, area) && get_best_defect(area) <= defect_cur) {
 					add_tile(set_flag, height, width);
 				}
 			}
 			area += width;
-			if (counts[area-1] && check_big_tile1(paint_width, width, height, area) && best_defect(area) <= defect_cur) {
+			if (counts[area-1] && check_big_tile1(paint_width, width, height, area) && get_best_defect(area) <= defect_cur) {
 				add_tile(set_flag, height, width);
 			}
 		}
 		area = 0;
 		for (height = 1; height < paint_height; ++height) {
 			area += width;
-			if (counts[area-1] && check_big_tile1(paint_height, height, width, area) && best_defect(area) <= defect_cur) {
+			if (counts[area-1] && check_big_tile1(paint_height, height, width, area) && get_best_defect(area) <= defect_cur) {
 				add_tile(set_flag, height, width);
 			}
 		}
@@ -486,7 +488,7 @@ static void add_tiles(int set_flag) {
 	else {
 		for (height = 1; height < paint_height; ++height) {
 			area += width;
-			if (counts[area-1] && check_big_tile1(paint_width, height, width, area) && best_defect(area) <= defect_cur) {
+			if (counts[area-1] && check_big_tile1(paint_width, height, width, area) && get_best_defect(area) <= defect_cur) {
 				add_tile(set_flag, height, width);
 				if (!rotate_flag) {
 					add_tile(set_flag, width, height);
@@ -529,19 +531,38 @@ static int check_big_tile2(int big_len, int area, int delta) {
 	return area-delta*(big_len/2) <= defect_cur;
 }
 
-static int best_defect(int area) {
+static int get_best_defect(int area) {
 	int options_n = paint_area/area, area_mod, others_n, defect1, defect2;
 	if (options_n < options_lo) {
-		return area+(area-paint_area)/(options_lo-1);
+		return get_defect(area, area+(area-paint_area)/(options_lo-1), -1);
 	}
 	area_mod = paint_area%area;
 	others_n = options_n-1;
-	defect1 = area_mod%others_n ? area_mod/others_n+1:area_mod/others_n;
-	defect2 = area+(area-paint_area)/options_n;
+	defect1 = get_defect(area, area_mod%others_n ? area_mod/others_n+1:area_mod/others_n, 1);
+	defect2 = get_defect(area, area+(area-paint_area)/options_n, -1);
 	if (defect2 < defect1) {
 		return defect2;
 	}
 	return defect1;
+}
+
+static int get_defect(int area, int defect, int sign) {
+	while (defect <= defect_cur && !is_tile(area+defect*sign)) {
+		++defect;
+	}
+	return defect;
+}
+
+static int is_tile(int area) {
+	int height = 1, width = area;
+	while (height <= paint_height && height <= width) {
+		if (height*width == area && width <= paint_width) {
+			return 1;
+		}
+		++height;
+		width = area/height;
+	}
+	return 0;
 }
 
 static int add_mondrian_tile(int tiles_start, int same_flag, int sym_flag) {
@@ -1008,7 +1029,7 @@ static int search_x_slot(choice_t *choices_lo, choice_t *choices_hi) {
 				if (option_out == option_sym && choices_lo->x_slot > x_slot_sym_max) {
 					break;
 				}
-				for (option_idx = 0; option_idx < options_in_n && (edges_no_overlap(option_out->y_slot_lo, option_out->y_slot_hi, options_in[option_idx]->y_slot_lo, options_in[option_idx]->y_slot_hi) || edges_no_overlap(choices_lo->x_slot, choices_lo->x_slot+option_out->slot_width, options_in[option_idx]->x_slot_lo, options_in[option_idx]->x_slot_hi)); ++option_idx);
+				for (option_idx = 0; option_idx < options_in_n && (no_edges_overlap(option_out->y_slot_lo, option_out->y_slot_hi, options_in[option_idx]->y_slot_lo, options_in[option_idx]->y_slot_hi) || no_edges_overlap(choices_lo->x_slot, choices_lo->x_slot+option_out->slot_width, options_in[option_idx]->x_slot_lo, options_in[option_idx]->x_slot_hi)); ++option_idx);
 				if (option_idx == options_in_n) {
 					option_out->x_slot_lo = choices_lo->x_slot;
 					option_out->x_slot_hi = choices_lo->x_slot+option_out->slot_width;
@@ -1067,7 +1088,7 @@ static int is_valid_option(const option_t *option, int y_slot, int x_slot) {
 	return option->y_slot_lo > y_slot || option->y_slot_hi <= y_slot || option->x_slot_lo > x_slot || option->x_slot_hi <= x_slot;
 }
 
-static int edges_no_overlap(int a1, int a2, int b1, int b2) {
+static int no_edges_overlap(int a1, int a2, int b1, int b2) {
 	return a1 >= b2 || a2 <= b1;
 }
 
