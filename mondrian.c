@@ -567,7 +567,7 @@ static int is_valid_tile(int area) {
 
 static int add_mondrian_tile(int tiles_start, int same_flag, int sym_flag) {
 	int r = 0, tile_idx1;
-	for (tile_idx1 = tiles_start; tile_idx1 < tiles_n && !r; ++tile_idx1) {
+	for (tile_idx1 = tiles_start; tile_idx1 < tiles_n; ++tile_idx1) {
 		if (same_flag) {
 			if (mondrian_tiles_n < success_tiles_n) {
 				int compare_flag = compare_tiles(tiles+tile_idx1, success_tiles+mondrian_tiles_n);
@@ -581,6 +581,19 @@ static int add_mondrian_tile(int tiles_start, int same_flag, int sym_flag) {
 			}
 		}
 		if (mondrian_tiles_n) {
+			if (mondrian_tiles_n+1 < mondrian_tiles_cur) {
+				if (tile_idx1+mondrian_tiles_cur > tile_stop+mondrian_tiles_n) {
+					break;
+				}
+			}
+			else {
+				if (tile_idx1 >= tile_stop) {
+					break;
+				}
+			}
+			if (tiles_area+tiles[tile_idx1].area_left < paint_area) {
+				break;
+			}
 			if (sym_flag) {
 				if (tiles[tile_idx1].delta >= 0) {
 					if (mondrian_tiles[mondrian_tiles_n-1]->delta > 0) {
@@ -596,31 +609,13 @@ static int add_mondrian_tile(int tiles_start, int same_flag, int sym_flag) {
 					}
 				}
 			}
-			if (mondrian_tiles_n < mondrian_tiles_cur) {
-				if (tile_idx1+mondrian_tiles_cur-mondrian_tiles_n > tile_stop) {
-					break;
-				}
-			}
-			else {
-				if (tile_idx1 >= tile_stop) {
-					break;
-				}
-			}
-			if (tiles_area+tiles[tile_idx1].area_left < paint_area) {
-				break;
-			}
 		}
 		else {
 			int area_left, tile_idx2;
 			if (sym_flag && tiles[tile_idx1].delta < 0) {
 				continue;
 			}
-			if (tile_stop < tiles_n && tiles[tile_idx1].area-tiles[tile_stop].area <= defect_cur) {
-				for (++tile_stop; tile_stop < tiles_n && tiles[tile_idx1].area-tiles[tile_stop].area <= defect_cur; ++tile_stop);
-			}
-			else {
-				for (; tile_stop > tile_idx1 && tiles[tile_idx1].area-tiles[tile_stop-1].area > defect_cur; --tile_stop);
-			}
+			for (; tile_stop < tiles_n && tiles[tile_idx1].area <= defect_cur+tiles[tile_stop].area; ++tile_stop);
 			area_left = 0;
 			for (tile_idx2 = tile_stop-1; tile_idx2 >= tile_idx1; --tile_idx2) {
 				if (area_left <= paint_area) {
@@ -670,6 +665,9 @@ static int add_mondrian_tile(int tiles_start, int same_flag, int sym_flag) {
 		}
 		tiles_area -= tiles[tile_idx1].area;
 		--mondrian_tiles_n;
+		if (r) {
+			break;
+		}
 	}
 	return r;
 }
@@ -757,7 +755,7 @@ static int search_y_slot(int bars_hi, bar_t *bar_start_bak, option_t *options_st
 		int slot_height, slot_width, x_space, x_delta, x_min, y_min;
 		option_t *option, *last_chance, *dominance;
 		bar_t *bar_cur, *bar_cur_next, *bar_start_next, *bar;
-		if ((option_sym_flag && bar_start->y_slot > y_slot_sym_max) || bar_start->y_space*bar_start->x_space < mondrian_tiles[mondrian_tiles_n-1]->area) {
+		if (option_sym_flag && bar_start->y_slot > y_slot_sym_max) {
 			return 0;
 		}
 		if (bar_start != bar_start_bak) {
@@ -894,7 +892,7 @@ static int search_y_slot(int bars_hi, bar_t *bar_start_bak, option_t *options_st
 			}
 		}
 		r = 0;
-		for (option = options_start; option != options_header; option = option->y_next) {
+		for (option = options_start; ; option = option->y_next) {
 			if (option->height <= slot_height && option->width <= slot_width) {
 				r = choose_y_slot(bars_hi, bar_start, option, option->height, option->width);
 				if (r) {
