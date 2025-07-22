@@ -553,12 +553,8 @@ static int check_defect(int area, int defect, int sign) {
 
 static int is_valid_tile(int area) {
 	int height;
-	for (height = 1; height <= paint_height; ++height) {
-		int width = area/height;
-		if (height > width) {
-			break;
-		}
-		if (width <= paint_width && height*width == area) {
+	for (height = 1; height <= paint_height && height*height <= area; ++height) {
+		if (area%height == 0 && area/height <= paint_width) {
 			return 1;
 		}
 	}
