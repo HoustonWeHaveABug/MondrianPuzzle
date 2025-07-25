@@ -107,7 +107,7 @@ static void link_choices(choice_t *, choice_t *);
 static int paint_height, paint_width, rotate_flag, defect_a, defect_b, options_lo, verbose_flag, paint_area, *counts, tiles_max, mondrian_tiles_max, success_tiles_n, defect_cur, mondrian_tiles_cur, tiles_n, mondrian_tiles_n, tile_stop, tiles_area, mondrian_defect, option_sym_flag, y_slot_sym_max, y_slot_sym_max_rotated, bars_n, options_in_n, x_slot_sym_max;
 static mp_t y_cost, x_cost;
 static tile_t *tiles, *success_tiles, **mondrian_tiles;
-static option_t *options, **options_in, *options_header, *dominances_header, *option_sym;
+static option_t *options, **options_in, *options_header, *option_sym, *dominances_header;
 static bar_t *bars, *bars_header;
 static choice_t *choices, *choices_header;
 
@@ -670,7 +670,7 @@ static int add_mondrian_tile(int tiles_start, int same_flag, int sym_flag) {
 
 static int is_mondrian(void) {
 	int option_idx, dominances_n, r;
-	option_t *dominances, *option, *option_sym_d_last, *option_sym_d_next;
+	option_t *dominances, *option;
 	if (verbose_flag) {
 		printf("is_mondrian options %d defect %d\n", mondrian_tiles_n, mondrian_defect);
 		fflush(stdout);
@@ -684,21 +684,6 @@ static int is_mondrian(void) {
 		link_options_y(options+option_idx, options+option_idx+1);
 	}
 	link_options_y(options_header, options);
-	dominances = options_header+1;
-	dominances_n = 0;
-	for (option = options; option != options_header; option = option->y_next) {
-		for (option_idx = 0; option_idx < dominances_n && !is_dominated(option, dominances[option_idx].d_last); ++option_idx);
-		if (option_idx == dominances_n) {
-			link_options_d(dominances+dominances_n, dominances+dominances_n);
-			++dominances_n;
-		}
-		insert_option_d(option, dominances[option_idx].d_last, dominances+option_idx);
-	}
-	dominances_header = dominances+dominances_n;
-	for (option_idx = dominances_n; option_idx--; ) {
-		link_options_y(dominances+option_idx, dominances+option_idx+1);
-	}
-	link_options_y(dominances_header, dominances);
 	option_sym = options;
 	for (option = options->y_next; option != options_header; option = option->y_next) {
 		if (compare_priorities(option, option_sym) < 0) {
@@ -708,15 +693,27 @@ static int is_mondrian(void) {
 	option_sym_flag = 1;
 	y_slot_sym_max = (paint_height-option_sym->height)/2;
 	y_slot_sym_max_rotated = (paint_height-option_sym->width)/2;
-	option_sym_d_last = option_sym->d_last;
-	option_sym_d_next = option_sym->d_next;
-	link_options_d(option_sym_d_last, option_sym_d_next);
-	if (option_sym_d_last == option_sym_d_next) {
-		link_options_y(option_sym_d_last->y_last, option_sym_d_last->y_next);
-	}
+	dominances = options_header+1;
+	dominances_n = 0;
 	for (option = options; option != options_header; option = option->y_next) {
-		option->rotate_flag = rotate_flag && option->delta && (paint_height < paint_width || option != option_sym);
+		if (option != option_sym) {
+			option->rotate_flag = rotate_flag && option->delta;
+			for (option_idx = 0; option_idx < dominances_n && !is_dominated(option, dominances[option_idx].d_last); ++option_idx);
+			if (option_idx == dominances_n) {
+				link_options_d(dominances+dominances_n, dominances+dominances_n);
+				++dominances_n;
+			}
+			insert_option_d(option, dominances[option_idx].d_last, dominances+option_idx);
+		}
+		else {
+			option->rotate_flag = rotate_flag && option->delta && paint_height < paint_width;
+		}
 	}
+	dominances_header = dominances+dominances_n;
+	for (option_idx = dominances_n; option_idx--; ) {
+		link_options_y(dominances+option_idx, dominances+option_idx+1);
+	}
+	link_options_y(dominances_header, dominances);
 	if (verbose_flag && !mp_new(&y_cost)) {
 		return -1;
 	}
