@@ -577,7 +577,7 @@ static int add_mondrian_tile(int tiles_start, int same_flag, int sym_flag) {
 				}
 			}
 			else {
-				if (tile_idx1 >= tile_stop) {
+				if (tile_idx1 == tile_stop) {
 					break;
 				}
 			}
@@ -739,7 +739,7 @@ static int search_y_slot(int bars_hi, bar_t *bar_start_bak, option_t *options_st
 		return 0;
 	}
 	if (bar_start != bars_header) {
-		int slot_height, slot_width, x_space, x_delta, x_min, y_min;
+		int slot_width, slot_height, x_space, x_delta, x_min, y_min;
 		option_t *option, *last_chance, *dominance;
 		bar_t *bar_cur, *bar_cur_next, *bar_start_next, *bar;
 		if (option_sym_flag && bar_start->y_slot > y_slot_sym_max) {
@@ -748,7 +748,6 @@ static int search_y_slot(int bars_hi, bar_t *bar_start_bak, option_t *options_st
 		if (bar_start != bar_start_bak) {
 			options_start = options_header->y_next;
 		}
-		slot_height = bar_start->y_space;
 		slot_width = bar_start->x_space;
 		if (bars_hi == bars_n) {
 			r = 0;
@@ -768,6 +767,7 @@ static int search_y_slot(int bars_hi, bar_t *bar_start_bak, option_t *options_st
 			}
 			return r;
 		}
+		slot_height = bar_start->y_space;
 		x_space = 0;
 		x_delta = 0;
 		x_min = paint_width;
@@ -987,8 +987,8 @@ static int choose_y_slot(int bars_hi, bar_t *bar_start, option_t *option, int sl
 		if (option_d_last == option_d_next) {
 			restore_option_y(option_d_last);
 		}
-		option->d_next->d_last = option;
-		option->d_last->d_next = option;
+		option_d_next->d_last = option;
+		option_d_last->d_next = option;
 	}
 	else {
 		option_sym_flag = 1;
