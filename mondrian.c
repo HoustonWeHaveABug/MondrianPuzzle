@@ -76,7 +76,7 @@ static int add_mondrian_tile(int, int, int);
 static int is_mondrian(void);
 static int is_dominated(const option_t *, const option_t *);
 static int search_y_slot(int, bar_t *, option_t *);
-static int check_slot_height(bar_t *, int);
+static int check_next_y_slot(bar_t *, int);
 static int choose_y_slot(int, bar_t *, option_t *, int, int);
 static void rollback_y_slot(bar_t *, bar_t *, bar_t *, int, int);
 static int search_x_slot(choice_t *, choice_t *);
@@ -751,15 +751,22 @@ static int search_y_slot(int bars_hi, bar_t *bar_start_bak, option_t *options_st
 		slot_height = bar_start->y_space;
 		slot_width = bar_start->x_space;
 		if (bars_hi == bars_n) {
+			r = 0;
 			for (option = options_start; option != options_header; option = option->y_next) {
-				if (option->width == slot_width && check_slot_height(bar_start, option->height)) {
-					return choose_y_slot(bars_hi, bar_start, option, option->height, option->width);
+				if (option->width == slot_width && check_next_y_slot(bar_start, bar_start->y_slot+option->height)) {
+					r = choose_y_slot(bars_hi, bar_start, option, option->height, option->width);
+					if (r) {
+						break;
+					}
 				}
-				if (option->rotate_flag && (option != option_sym || bar_start->y_slot <= y_slot_sym_max_rotated) && option->height == slot_width && check_slot_height(bar_start, option->width)) {
-					return choose_y_slot(bars_hi, bar_start, option, option->width, option->height);
+				if (option->rotate_flag && (option != option_sym || bar_start->y_slot <= y_slot_sym_max_rotated) && option->height == slot_width && check_next_y_slot(bar_start, bar_start->y_slot+option->width)) {
+					r = choose_y_slot(bars_hi, bar_start, option, option->width, option->height);
+					if (r) {
+						break;
+					}
 				}
 			}
-			return 0;
+			return r;
 		}
 		x_space = 0;
 		x_delta = 0;
@@ -932,12 +939,10 @@ static int search_y_slot(int bars_hi, bar_t *bar_start_bak, option_t *options_st
 	return r;
 }
 
-static int check_slot_height(bar_t *bar_start, int slot_height) {
+static int check_next_y_slot(bar_t *bar_start, int y_slot) {
 	bar_t *bar;
-	for (bar = bar_start; bar != bars_header && bar->height <= slot_height; bar = bar->next) {
-		slot_height -= bar->height;
-	}
-	return !slot_height;
+	for (bar = bar_start->next; bar != bars_header && bar->y_slot < y_slot; bar = bar->next);
+	return bar->y_slot == y_slot;
 }
 
 static int choose_y_slot(int bars_hi, bar_t *bar_start, option_t *option, int slot_height, int slot_width) {
