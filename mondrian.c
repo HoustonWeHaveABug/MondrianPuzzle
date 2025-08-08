@@ -14,6 +14,7 @@ typedef struct {
 	int slots_n;
 	int y_priority;
 	int x_priority;
+	int rotate_flag;
 	int area_left;
 }
 tile_t;
@@ -691,7 +692,6 @@ static int is_mondrian(void) {
 	dominances_n = 0;
 	for (option = options; option != options_header; option = option->y_next) {
 		if (option != option_sym) {
-			option->rotate_flag = rotate_flag && option->delta;
 			for (option_idx = 0; option_idx < dominances_n && !is_dominated(option, dominances[option_idx].d_last); ++option_idx);
 			if (option_idx == dominances_n) {
 				link_options_d(dominances+dominances_n, dominances+dominances_n);
@@ -700,7 +700,7 @@ static int is_mondrian(void) {
 			insert_option_d(option, dominances[option_idx].d_last, dominances+option_idx);
 		}
 		else {
-			option->rotate_flag = rotate_flag && option->delta && paint_height < paint_width;
+			option->rotate_flag &= paint_height < paint_width;
 		}
 	}
 	dominances_header = dominances+dominances_n;
@@ -1094,11 +1094,10 @@ static void set_tile(tile_t *tile, int height, int width) {
 	tile->slots_n = y_slots_n*x_slots_n;
 	tile->y_priority = y_slots_n;
 	tile->x_priority = x_slots_n;
-	if (rotate_flag && width <= paint_height && height <= paint_width) {
+	tile->rotate_flag = rotate_flag && tile->delta && width <= paint_height;
+	if (tile->rotate_flag) {
 		tile->slots_n += (paint_height-width+1)*(paint_width-height+1);
-		if (tile->delta) {
-			tile->y_priority += paint_height;
-		}
+		tile->y_priority += paint_height;
 	}
 }
 
@@ -1121,6 +1120,7 @@ static void copy_tile(option_t *option, const tile_t *tile) {
 	option->slots_n = tile->slots_n;
 	option->y_priority = tile->y_priority;
 	option->x_priority = tile->x_priority;
+	option->rotate_flag = tile->rotate_flag;
 }
 
 static void set_option(option_t *option) {
