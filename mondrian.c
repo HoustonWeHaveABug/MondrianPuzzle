@@ -40,8 +40,8 @@ struct option_s {
 	option_t *y_next;
 	option_t *d_last;
 	option_t *d_next;
-	option_t *out_last;
-	option_t *out_next;
+	option_t *x_last;
+	option_t *x_next;
 };
 
 typedef struct bar_s bar_t;
@@ -81,7 +81,6 @@ static int check_next_y_slot(bar_t *, int);
 static int choose_y_slot(int, bar_t *, option_t *, int, int);
 static void rollback_y_slot(bar_t *, bar_t *, bar_t *, int, int);
 static int search_x_slot(choice_t *, choice_t *);
-static int is_valid_choice(int, int);
 static int is_valid_option(const option_t *, int, int);
 static void set_tile(tile_t *, int, int);
 static int compare_tiles(const void *, const void *);
@@ -93,7 +92,7 @@ static void restore_option_y(option_t *);
 static void link_options_y(option_t *, option_t *);
 static void insert_option_d(option_t *, option_t *, option_t *);
 static void link_options_d(option_t *, option_t *);
-static void link_options_out(option_t *, option_t *);
+static void link_options_x(option_t *, option_t *);
 static void print_option(const option_t *);
 static void set_bar(bar_t *, int, int, int);
 static void insert_bar(bar_t *, bar_t *, bar_t *);
@@ -103,10 +102,10 @@ static int compare_choices(const choice_t *, const choice_t *);
 static void insert_choice(choice_t *, choice_t *, choice_t *);
 static void link_choices(choice_t *, choice_t *);
 
-static int paint_height, paint_width, rotate_flag, defect_a, defect_b, options_lo, verbose_flag, paint_area, *counts, tiles_max, mondrian_tiles_max, success_tiles_n, defect_cur, mondrian_tiles_cur, tiles_n, mondrian_tiles_n, tile_stop, tiles_area, mondrian_defect, option_sym_flag, y_slot_sym_max, y_slot_sym_max_rotated, bars_n, options_in_n, x_slot_sym_max;
+static int paint_height, paint_width, rotate_flag, defect_a, defect_b, options_lo, verbose_flag, paint_area, *counts, tiles_max, mondrian_tiles_max, success_tiles_n, defect_cur, mondrian_tiles_cur, tiles_n, mondrian_tiles_n, tile_stop, tiles_area, mondrian_defect, option_sym_flag, y_slot_sym_max, y_slot_sym_max_rotated, bars_n, solutions_n, x_slot_sym_max;
 static mp_t y_cost, x_cost;
 static tile_t *tiles, *success_tiles, **mondrian_tiles;
-static option_t *options, **options_in, *options_header, *option_sym, *dominances_header;
+static option_t *options, **solutions, *options_header, *option_sym, *dominances_header;
 static bar_t *bars, *bars_header;
 static choice_t *choices, *choices_header;
 
@@ -137,7 +136,7 @@ int main(void) {
 		return EXIT_FAILURE;
 	}
 	tiles_max = 1;
-	success_tiles = tiles+tiles_max;
+	success_tiles = tiles+1;
 	mondrian_tiles = malloc(sizeof(tile_t *)*(size_t)options_lo);
 	if (!mondrian_tiles) {
 		fputs("Could not allocate memory for mondrian_tiles\n", stderr);
@@ -170,9 +169,9 @@ int main(void) {
 	bars_header = bars+paint_height;
 	set_bar(bars_header, paint_height, 0, 0);
 	insert_bar(bars, bars_header, bars_header);
-	options_in = malloc(sizeof(option_t *)*(size_t)options_lo);
-	if (!options_in) {
-		fputs("Could not allocate memory for options_in\n", stderr);
+	solutions = malloc(sizeof(option_t *)*(size_t)options_lo);
+	if (!solutions) {
+		fputs("Could not allocate memory for solutions\n", stderr);
 		fflush(stderr);
 		free(bars);
 		free(options);
@@ -186,7 +185,7 @@ int main(void) {
 	if (!choices) {
 		fputs("Could not allocate memory for choices\n", stderr);
 		fflush(stderr);
-		free(options_in);
+		free(solutions);
 		free(bars);
 		free(options);
 		free(mondrian_tiles);
@@ -216,7 +215,7 @@ int main(void) {
 		while (defect_cur >= defect_b && r == 1);
 	}
 	free(choices);
-	free(options_in);
+	free(solutions);
 	free(bars);
 	free(options);
 	free(mondrian_tiles);
@@ -352,7 +351,7 @@ static int search_defect(void) {
 			}
 			tiles = tiles_tmp;
 			tiles_max = tiles_n;
-			success_tiles = tiles+tiles_max;
+			success_tiles = tiles+tiles_n;
 		}
 		tiles_n = 0;
 		for (width = 1; width < paint_height; ++width) {
@@ -446,7 +445,7 @@ static int search_defect(void) {
 		if (mondrian_tiles_n > mondrian_tiles_max) {
 			int choices_n;
 			tile_t *tiles_tmp = realloc(tiles, sizeof(tile_t)*(size_t)(tiles_max+mondrian_tiles_n)), **mondrian_tiles_tmp;
-			option_t *options_tmp, **options_in_tmp;
+			option_t *options_tmp, **solutions_tmp;
 			choice_t *choices_tmp;
 			if (!tiles_tmp) {
 				fputs("Could not reallocate memory for tiles\n", stderr);
@@ -470,13 +469,13 @@ static int search_defect(void) {
 				return -1;
 			}
 			options = options_tmp;
-			options_in_tmp = realloc(options_in, sizeof(option_t *)*(size_t)mondrian_tiles_n);
-			if (!options_in_tmp) {
-				fputs("Could not reallocate memory for options_in\n", stderr);
+			solutions_tmp = realloc(solutions, sizeof(option_t *)*(size_t)mondrian_tiles_n);
+			if (!solutions_tmp) {
+				fputs("Could not reallocate memory for solutions\n", stderr);
 				fflush(stderr);
 				return -1;
 			}
-			options_in = options_in_tmp;
+			solutions = solutions_tmp;
 			choices_n = mondrian_tiles_n*2;
 			choices_tmp = realloc(choices, sizeof(choice_t)*(size_t)(choices_n+1));
 			if (!choices_tmp) {
@@ -886,7 +885,7 @@ static int search_y_slot(int bars_hi, bar_t *bar_start_bak, option_t *options_st
 			}
 		}
 		r = 0;
-		for (option = options_start; ; option = option->y_next) {
+		for (option = options_start; option != options_header; option = option->y_next) {
 			if (option->height <= slot_height && option->width <= slot_width) {
 				r = choose_y_slot(bars_hi, bar_start, option, option->height, option->width);
 				if (r) {
@@ -919,10 +918,10 @@ static int search_y_slot(int bars_hi, bar_t *bar_start_bak, option_t *options_st
 	}
 	for (option_idx = mondrian_tiles_n; option_idx--; ) {
 		set_option(options+option_idx);
-		link_options_out(options+option_idx, options+option_idx+1);
+		link_options_x(options+option_idx, options+option_idx+1);
 	}
-	link_options_out(options_header, options);
-	options_in_n = 0;
+	link_options_x(options_header, options);
+	solutions_n = 0;
 	x_slot_sym_max = (paint_width-option_sym->slot_width)/2;
 	if (verbose_flag && !mp_new(&x_cost)) {
 		return -1;
@@ -1009,55 +1008,60 @@ static void rollback_y_slot(bar_t *bar_start, bar_t *bar_cur, bar_t *bar_cur_nex
 }
 
 static int search_x_slot(choice_t *choices_lo, choice_t *choices_hi) {
-	int option_idx;
+	int solution_idx;
 	if (verbose_flag && !mp_inc(&x_cost)) {
 		return -1;
 	}
-	if (options_header->out_next != options_header) {
+	if (options_header->x_next != options_header) {
 		int r;
-		option_t *option_out;
-		for (; choices_lo != choices_header && !is_valid_choice(choices_lo->y_slot, choices_lo->x_slot); choices_lo = choices_lo->next);
+		option_t *option;
+		for (; choices_lo != choices_header; choices_lo = choices_lo->next) {
+			for (solution_idx = 0; solution_idx < solutions_n && is_valid_option(solutions[solution_idx], choices_lo->y_slot, choices_lo->x_slot); ++solution_idx);
+			if (solution_idx == solutions_n) {
+				break;
+			}
+		}
 		if (choices_lo == choices_header) {
 			return 0;
 		}
 		r = 0;
-		for (option_out = options_header->out_next; option_out != options_header; option_out = option_out->out_next) {
-			if (option_out->y_slot_lo == choices_lo->y_slot) {
-				if (option_out == option_sym && choices_lo->x_slot > x_slot_sym_max) {
+		for (option = options_header->x_next; option != options_header; option = option->x_next) {
+			if (option->y_slot_lo == choices_lo->y_slot) {
+				if (option == option_sym && choices_lo->x_slot > x_slot_sym_max) {
 					break;
 				}
-				for (option_idx = 0; option_idx < options_in_n && (option_out->y_slot_lo >= options_in[option_idx]->y_slot_hi || option_out->y_slot_hi <= options_in[option_idx]->y_slot_lo || choices_lo->x_slot >= options_in[option_idx]->x_slot_hi || choices_lo->x_slot+option_out->slot_width <= options_in[option_idx]->x_slot_lo); ++option_idx);
-				if (option_idx == options_in_n) {
-					option_out->x_slot_lo = choices_lo->x_slot;
-					option_out->x_slot_hi = choices_lo->x_slot+option_out->slot_width;
-					link_options_out(option_out->out_last, option_out->out_next);
-					options_in[options_in_n++] = option_out;
-					if (option_out->y_slot_hi < paint_height) {
+				for (solution_idx = 0; solution_idx < solutions_n && (option->y_slot_lo >= solutions[solution_idx]->y_slot_hi || option->y_slot_hi <= solutions[solution_idx]->y_slot_lo || choices_lo->x_slot >= solutions[solution_idx]->x_slot_hi || choices_lo->x_slot+option->slot_width <= solutions[solution_idx]->x_slot_lo); ++solution_idx);
+				if (solution_idx == solutions_n) {
+					option->x_slot_lo = choices_lo->x_slot;
+					option->x_slot_hi = choices_lo->x_slot+option->slot_width;
+					link_options_x(option->x_last, option->x_next);
+					solutions[solutions_n++] = option;
+					if (option->y_slot_hi < paint_height) {
 						choice_t *choice_last;
 						++choices_hi;
-						set_choice(choices_hi, option_out->y_slot_hi, option_out->x_slot_lo);
+						set_choice(choices_hi, option->y_slot_hi, option->x_slot_lo);
 						for (choice_last = choices_header->last; choice_last != choices_header && compare_choices(choice_last, choices_hi) > 0; choice_last = choice_last->last);
 						insert_choice(choices_hi, choice_last, choice_last->next);
 					}
-					if (option_out->x_slot_hi < paint_width) {
+					if (option->x_slot_hi < paint_width) {
 						choice_t *choice_next;
 						++choices_hi;
-						set_choice(choices_hi, option_out->y_slot_lo, option_out->x_slot_hi);
+						set_choice(choices_hi, option->y_slot_lo, option->x_slot_hi);
 						for (choice_next = choices_header->next; choice_next != choices_header && compare_choices(choice_next, choices_hi) < 0; choice_next = choice_next->next);
 						insert_choice(choices_hi, choice_next->last, choice_next);
 					}
 					r = search_x_slot(choices_lo->next, choices_hi);
-					if (option_out->x_slot_hi < paint_width) {
+					if (option->x_slot_hi < paint_width) {
 						link_choices(choices_hi->last, choices_hi->next);
 						--choices_hi;
 					}
-					if (option_out->y_slot_hi < paint_height) {
+					if (option->y_slot_hi < paint_height) {
 						link_choices(choices_hi->last, choices_hi->next);
 						--choices_hi;
 					}
-					--options_in_n;
-					option_out->out_next->out_last = option_out;
-					option_out->out_last->out_next = option_out;
+					--solutions_n;
+					option->x_next->x_last = option;
+					option->x_last->x_next = option;
 					if (r) {
 						break;
 					}
@@ -1067,18 +1071,12 @@ static int search_x_slot(choice_t *choices_lo, choice_t *choices_hi) {
 		return r;
 	}
 	printf("0 %d %d %d\n", paint_height, paint_width, mondrian_tiles_n);
-	for (option_idx = 0; option_idx < options_in_n; ++option_idx) {
-		print_option(options_in[option_idx]);
+	for (solution_idx = 0; solution_idx < solutions_n; ++solution_idx) {
+		print_option(solutions[solution_idx]);
 	}
 	printf("Defect %d\n", mondrian_defect);
 	fflush(stdout);
 	return 1;
-}
-
-static int is_valid_choice(int y_slot, int x_slot) {
-	int option_idx;
-	for (option_idx = 0; option_idx < options_in_n && is_valid_option(options_in[option_idx], y_slot, x_slot); ++option_idx);
-	return option_idx == options_in_n;
 }
 
 static int is_valid_option(const option_t *option, int y_slot, int x_slot) {
@@ -1166,9 +1164,9 @@ static void link_options_d(option_t *last, option_t *next) {
 	next->d_last = last;
 }
 
-static void link_options_out(option_t *last, option_t *next) {
-	last->out_next = next;
-	next->out_last = last;
+static void link_options_x(option_t *last, option_t *next) {
+	last->x_next = next;
+	next->x_last = last;
 }
 
 static void print_option(const option_t *option) {
