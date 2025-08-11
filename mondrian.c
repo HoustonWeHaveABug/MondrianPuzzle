@@ -87,7 +87,6 @@ static int compare_tiles(const void *, const void *);
 static void copy_tile(option_t *, const tile_t *);
 static void set_option(option_t *);
 static int compare_options(const void *, const void *);
-static int compare_priorities(const option_t *, const option_t *);
 static void restore_option_y(option_t *);
 static void link_options_y(option_t *, option_t *);
 static void insert_option_d(option_t *, option_t *, option_t *);
@@ -680,7 +679,7 @@ static int is_mondrian(void) {
 	link_options_y(options_header, options);
 	option_sym = options;
 	for (option = options->y_next; option != options_header; option = option->y_next) {
-		if (compare_priorities(option, option_sym) < 0) {
+		if (option->y_priority > option_sym->y_priority || (option->y_priority == option_sym->y_priority && option->x_priority > option_sym->x_priority)) {
 			option_sym = option;
 		}
 	}
@@ -817,10 +816,10 @@ static int search_y_slot(int bars_hi, bar_t *bar_start_bak, option_t *options_st
 		if (option_sym_flag) {
 			if (option_sym->rotate_flag) {
 				for (bar = bar_start_next; bar != bars_header && bar->x_space < option_sym->height; bar = bar->next);
-				if (bar == bars_header || bar->y_slot > y_slot_sym_max_rotated || bar->y_space < option_sym->width) {
+				if (bar == bars_header || bar->y_slot > y_slot_sym_max_rotated) {
 					for (; bar != bars_header && bar->x_space < option_sym->width; bar = bar->next);
-					if (bar == bars_header || bar->y_slot > y_slot_sym_max || bar->y_space < option_sym->height) {
-						if (option_sym < options_start || ((bar_start->y_slot > y_slot_sym_max_rotated || option_sym->width > slot_height || option_sym->height > slot_width) && (option_sym->height > slot_height || option_sym->width > slot_width))) {
+					if (bar == bars_header || bar->y_slot > y_slot_sym_max) {
+						if (option_sym < options_start || ((bar_start->y_slot > y_slot_sym_max_rotated || option_sym->height > slot_width) && (option_sym->height > slot_height || option_sym->width > slot_width))) {
 							rollback_y_slot(bar_start, bar_cur, bar_cur_next, y_min, slot_width);
 							return 0;
 						}
@@ -830,7 +829,7 @@ static int search_y_slot(int bars_hi, bar_t *bar_start_bak, option_t *options_st
 			}
 			else {
 				for (bar = bar_start_next; bar != bars_header && bar->x_space < option_sym->width; bar = bar->next);
-				if (bar == bars_header || bar->y_slot > y_slot_sym_max || bar->y_space < option_sym->height) {
+				if (bar == bars_header || bar->y_slot > y_slot_sym_max) {
 					if (option_sym < options_start || option_sym->height > slot_height || option_sym->width > slot_width) {
 						rollback_y_slot(bar_start, bar_cur, bar_cur_next, y_min, slot_width);
 						return 0;
@@ -871,7 +870,7 @@ static int search_y_slot(int bars_hi, bar_t *bar_start_bak, option_t *options_st
 		}
 		rollback_y_slot(bar_start, bar_cur, bar_cur_next, y_min, slot_width);
 		for (bar = bar_start->next; bar != bars_header; bar = bar->next) {
-			if (option_sym_flag && ((bar->y_slot <= y_slot_sym_max && bar->y_space >= option_sym->height && bar->x_space >= option_sym->width) || (option_sym->rotate_flag && bar->y_slot <= y_slot_sym_max_rotated && bar->y_space >= option_sym->width && bar->x_space >= option_sym->height))) {
+			if (option_sym_flag && ((bar->y_slot <= y_slot_sym_max && bar->x_space >= option_sym->width) || (option_sym->rotate_flag && bar->y_slot <= y_slot_sym_max_rotated && bar->x_space >= option_sym->height))) {
 				continue;
 			}
 			for (dominance = dominances_header->y_next; dominance != dominances_header; dominance = dominance->y_next) {
@@ -1135,13 +1134,6 @@ static int compare_options(const void *a, const void *b) {
 		return option_a->area-option_b->area;
 	}
 	return option_b->width-option_a->width;
-}
-
-static int compare_priorities(const option_t *option_a, const option_t *option_b) {
-	if (option_a->y_priority != option_b->y_priority) {
-		return option_b->y_priority-option_a->y_priority;
-	}
-	return option_b->x_priority-option_a->x_priority;
 }
 
 static void restore_option_y(option_t *option) {
