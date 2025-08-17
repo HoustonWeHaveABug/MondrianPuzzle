@@ -12,11 +12,11 @@ The mondrian program is the solver and expects the following parameters on stand
 - Minimum number of options (>= 2)
 - Verbose mode (1: on, 0: off)
 
-When Request is squares, the program will iterate on every squares in range \[ <Order low>x<Order low>, <Order high>x<Order high> \].
+When Request is squares, the program will iterate on every squares in range \[ \<Order low\>x\<Order low\>, \<Order high\>x\<Order high\> \].
 
-When Request is rectangles, the program will iterate on every rectangles in range \[ 1x<Order low>, <Order high>x<Order high> \].
+When Request is rectangles, the program will iterate on every rectangles in range \[ 1x\<Order low\>, \<Order high\>x\<Order high\> \].
 
-Otherwise, the program will solve the <Order low>x<Order high> rectangle.
+Otherwise, the program will solve the \<Order low\>x\<Order high\> rectangle.
 
 When Rotate flag is on, the program will consider tiles MxN and NxM identical. When it is off, they will be considered distinct.
 
