@@ -1,3 +1,4 @@
+#!/bin/bash
 if [ $# -ne 2 ]
 then
 	echo "Usage: $0 <order> <rotate_flag>"
@@ -12,5 +13,5 @@ then
 else
 	UB=`echo "$ORDER/l($ORDER)+4" | bc -l | sed "s/\..*//g"`
 fi
-echo $ORDER $ORDER $ROTATE_FLAG $UB 0 2 0 | ./mondrian
+echo 0 $ORDER $ORDER $ROTATE_FLAG $UB 0 2 0 | ./mondrian
 exit 0
