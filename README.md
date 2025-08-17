@@ -3,15 +3,22 @@
 Solution to challenge https://www.reddit.com/r/dailyprogrammer/comments/9dv08q/20180907_challenge_367_hard_the_mondrian_puzzle/.
 
 The mondrian program is the solver and expects the following parameters on standard input:
-- Paint height (>= 1)
-- Paint width (>= 3 and >= Paint height)
+- Request (1: squares, 2: rectangles, other: unique)
+- Order low (>= 1)
+- Order high (>= Order low)
 - Rotate flag (1: on, 0: off)
 - Defect A (>= 0)
 - Defect B (>= 0)
 - Minimum number of options (>= 2)
 - Verbose mode (1: on, 0: off)
 
-When Rotate flag is on, the solver will consider tiles MxN and NxM identical. When it is off, they will be considered distinct.
+When Request is squares, the program will iterate on every squares in range \[ <Order low>x<Order low>, <Order high>x<Order high> \].
+
+When Request is rectangles, the program will iterate on every rectangles in range \[ 1x<Order low>, <Order high>x<Order high> \].
+
+Otherwise, the program will solve the <Order low>x<Order high> rectangle.
+
+When Rotate flag is on, the program will consider tiles MxN and NxM identical. When it is off, they will be considered distinct.
 
 The program will try to solve the puzzle searching from Defect A to Defect B.
 
