@@ -555,10 +555,7 @@ static int check_big_tile1(int paint_len, int len, int big_len, int area) {
 }
 
 static int check_big_tile2(int big_len, int area, int delta) {
-	if (big_len%2 == 0) {
-		return area-delta*(big_len/2-1) <= defect_cur;
-	}
-	return area-delta*(big_len/2) <= defect_cur;
+	return area-delta*(big_len/2-1+big_len%2) <= defect_cur;
 }
 
 static int is_valid_area(int area) {
