@@ -67,14 +67,14 @@ struct choice_s {
 
 static int run_request(void);
 static int search_defect(void);
-static void add_tile(int, int);
+static int is_valid_area(int);
+static int check_defect(int, int, int);
+static int is_valid_tile(int);
 static int check_tile1(int, int, int);
 static int check_tile2(int, int, int, int, int);
 static int check_big_tile1(int, int, int, int);
 static int check_big_tile2(int, int, int);
-static int is_valid_area(int);
-static int check_defect(int, int, int);
-static int is_valid_tile(int);
+static void add_tile(int, int);
 static int add_mondrian_tile(int, int, int);
 static int is_mondrian(void);
 static int is_dominated(const option_t *, const option_t *);
@@ -201,9 +201,7 @@ static int run_request(void) {
 		free(counts);
 		return 0;
 	}
-	set_bar(bars, 0, paint_height, paint_width);
 	bars_header = bars+paint_height;
-	set_bar(bars_header, paint_height, 0, 0);
 	insert_bar(bars, bars_header, bars_header);
 	solutions = malloc(sizeof(option_t *)*(size_t)options_lo);
 	if (!solutions) {
@@ -530,34 +528,6 @@ static int search_defect(void) {
 	return 0;
 }
 
-static void add_tile(int height, int width) {
-	set_tile(tiles+tiles_n, height, width);
-	++tiles_n;
-}
-
-static int check_tile1(int height, int width, int area) {
-	return check_tile2(area, paint_height-height, paint_width, height, paint_width-width) || check_tile2(area, paint_height-height, width, paint_height, paint_width-width);
-}
-
-static int check_tile2(int area, int height_delta, int width, int height, int width_delta) {
-	return area-height_delta*width <= defect_cur && area-height*width_delta <= defect_cur;
-}
-
-static int check_big_tile1(int paint_len, int len, int big_len, int area) {
-	int delta = paint_len-len;
-	if (delta != len) {
-		return area-delta*big_len <= defect_cur;
-	}
-	if (delta < big_len) {
-		return check_big_tile2(big_len, area, delta);
-	}
-	return check_big_tile2(delta, area, big_len);
-}
-
-static int check_big_tile2(int big_len, int area, int delta) {
-	return area-delta*(big_len/2-1+big_len%2) <= defect_cur;
-}
-
 static int is_valid_area(int area) {
 	int options_n = paint_area/area, area_mod, others_n;
 	if (options_n < options_lo) {
@@ -586,6 +556,34 @@ static int is_valid_tile(int area) {
 		}
 	}
 	return 0;
+}
+
+static int check_tile1(int height, int width, int area) {
+	return check_tile2(area, paint_height-height, paint_width, height, paint_width-width) || check_tile2(area, paint_height-height, width, paint_height, paint_width-width);
+}
+
+static int check_tile2(int area, int height_delta, int width, int height, int width_delta) {
+	return area-height_delta*width <= defect_cur && area-height*width_delta <= defect_cur;
+}
+
+static int check_big_tile1(int paint_len, int len, int big_len, int area) {
+	int delta = paint_len-len;
+	if (delta != len) {
+		return area-delta*big_len <= defect_cur;
+	}
+	if (delta < big_len) {
+		return check_big_tile2(big_len, area, delta);
+	}
+	return check_big_tile2(delta, area, big_len);
+}
+
+static int check_big_tile2(int big_len, int area, int delta) {
+	return area-delta*(big_len/2-1+big_len%2) <= defect_cur;
+}
+
+static void add_tile(int height, int width) {
+	set_tile(tiles+tiles_n, height, width);
+	++tiles_n;
 }
 
 static int add_mondrian_tile(int tiles_start, int same_flag, int sym_flag) {
@@ -698,6 +696,14 @@ static int add_mondrian_tile(int tiles_start, int same_flag, int sym_flag) {
 static int is_mondrian(void) {
 	int option_idx, dominances_n, r;
 	option_t *dominances, *option;
+	if (paint_height < paint_width) {
+		for (option_idx = 0; option_idx < tiles_n && tiles[option_idx].rotate_flag; ++option_idx);
+		if (option_idx == tiles_n) {
+			int len = paint_height;
+			paint_height = paint_width;
+			paint_width = len;
+		}
+	}
 	if (verbose_flag) {
 		printf("is_mondrian options %d defect %d\n", mondrian_tiles_n, mondrian_defect);
 		fflush(stdout);
@@ -726,7 +732,7 @@ static int is_mondrian(void) {
 			for (option_idx = 0; option_idx < dominances_n && !is_dominated(option, dominances[option_idx].d_last); ++option_idx);
 		}
 		else {
-			option->rotate_flag &= paint_height < paint_width;
+			option->rotate_flag &= paint_height != paint_width;
 			option->y_slot_max = (paint_height-option->height)/2;
 			option->y_slot_max_rotated = (paint_height-option->width)/2;
 			option_idx = dominances_n;
@@ -745,6 +751,8 @@ static int is_mondrian(void) {
 	if (verbose_flag && !mp_new(&y_cost)) {
 		return -1;
 	}
+	set_bar(bars, 0, paint_height, paint_width);
+	set_bar(bars_header, paint_height, 0, 0);
 	bars_n = 1;
 	r = search_y_slot(mondrian_tiles_n, bars, options);
 	if (verbose_flag) {
@@ -752,6 +760,11 @@ static int is_mondrian(void) {
 		mp_print("cost", &y_cost);
 		fflush(stdout);
 		mp_free(&y_cost);
+	}
+	if (paint_height > paint_width) {
+		int len = paint_height;
+		paint_height = paint_width;
+		paint_width = len;
 	}
 	return r;
 }
@@ -776,8 +789,8 @@ static int search_y_slot(int bars_hi, bar_t *bar_start, option_t *options_start)
 		slot_width = bar_start->x_space;
 		if (bars_hi == bars_n) {
 			r = 0;
-			for (option = options_start; option != options_header && option->y_slot_max >= y_slot; option = option->y_next) {
-				if (option->width == slot_width && check_next_y_slot(bar_start, y_slot+option->height)) {
+			for (option = options_start; option != options_header; option = option->y_next) {
+				if (option->y_slot_max >= y_slot && option->width == slot_width && check_next_y_slot(bar_start, y_slot+option->height)) {
 					r = choose_y_slot(bars_hi, bar_start, option, option->height, option->width);
 					if (r) {
 						break;
@@ -797,10 +810,7 @@ static int search_y_slot(int bars_hi, bar_t *bar_start, option_t *options_start)
 		x_min = paint_width;
 		y_min = paint_height;
 		for (option = options_start; option != options_header; option = option->y_next) {
-			if (option->y_slot_max < y_slot) {
-				return 0;
-			}
-			if (option->width <= slot_width) {
+			if (option->y_slot_max >= y_slot && option->width <= slot_width) {
 				x_max += option->width;
 				if (option->rotate_flag && option->y_slot_max_rotated >= y_slot && option->height <= slot_width) {
 					x_delta += option->delta;
@@ -849,7 +859,7 @@ static int search_y_slot(int bars_hi, bar_t *bar_start, option_t *options_start)
 				if (bar == bars_header || bar->y_slot > option->y_slot_max_rotated) {
 					for (; bar != bars_header && bar->x_space < option->width; bar = bar->next);
 					if (bar == bars_header || bar->y_slot > option->y_slot_max) {
-						if (option < options_start || ((option->y_slot_max_rotated < y_slot || option->height > slot_width) && (option->width > slot_width))) {
+						if (option < options_start || ((option->y_slot_max_rotated < y_slot || option->height > slot_width) && (option->y_slot_max < y_slot || option->width > slot_width))) {
 							rollback_y_slot(bar_start, bar_cur, bar_cur_next, y_min, slot_width);
 							return 0;
 						}
@@ -862,7 +872,7 @@ static int search_y_slot(int bars_hi, bar_t *bar_start, option_t *options_start)
 			else {
 				for (bar = bar_start_next; bar != bars_header && bar->x_space < option->width; bar = bar->next);
 				if (bar == bars_header || bar->y_slot > option->y_slot_max) {
-					if (option < options_start || option->width > slot_width) {
+					if (option < options_start || option->y_slot_max < y_slot || option->width > slot_width) {
 						rollback_y_slot(bar_start, bar_cur, bar_cur_next, y_min, slot_width);
 						return 0;
 					}
@@ -886,29 +896,25 @@ static int search_y_slot(int bars_hi, bar_t *bar_start, option_t *options_start)
 		}
 		r = 0;
 		for (option = options_start; option != options_header; option = option->y_next) {
-			if (option->width <= slot_width) {
+			if (option->y_slot_max >= y_slot && option->width <= slot_width) {
 				r = choose_y_slot(bars_hi, bar_start, option, option->height, option->width);
 				if (r) {
 					break;
 				}
-				x_max -= option->width;
-			}
-			if (option->rotate_flag && option->y_slot_max_rotated >= y_slot && option->height <= slot_width) {
-				if (option->width <= slot_width) {
-					if (x_max+option->height >= slot_width) {
-						r = choose_y_slot(bars_hi, bar_start, option, option->width, option->height);
-						if (r) {
-							break;
-						}
-					}
-				}
-				else {
+				if (option->rotate_flag && option->y_slot_max_rotated >= y_slot && option->height <= slot_width) {
 					r = choose_y_slot(bars_hi, bar_start, option, option->width, option->height);
 					if (r) {
 						break;
 					}
-					x_max -= option->height;
 				}
+				x_max -= option->width;
+			}
+			else if (option->rotate_flag && option->y_slot_max_rotated >= y_slot && option->height <= slot_width) {
+				r = choose_y_slot(bars_hi, bar_start, option, option->width, option->height);
+				if (r) {
+					break;
+				}
+				x_max -= option->height;
 			}
 			if (x_max < slot_width || option == last_chance) {
 				break;
@@ -1073,12 +1079,11 @@ static int is_valid_choice(const option_t *option, int y_slot, int x_slot) {
 }
 
 static void set_tile(tile_t *tile, int height, int width) {
-	int y_slots_n = paint_height-height+1, x_slots_n = paint_width-width+1;
 	tile->height = height;
 	tile->width = width;
 	tile->area = height*width;
 	tile->delta = width-height;
-	tile->slots_n = y_slots_n*x_slots_n;
+	tile->slots_n = (paint_height-height+1)*(paint_width-width+1);
 	tile->rotate_flag = rotate_flag && tile->delta && width <= paint_height;
 	if (tile->rotate_flag) {
 		tile->slots_n += (paint_height-width+1)*(paint_width-height+1);
@@ -1101,11 +1106,12 @@ static void copy_tile(option_t *option, const tile_t *tile) {
 	option->width = tile->width;
 	option->area = tile->area;
 	option->delta = tile->delta;
-	option->slots_n = tile->slots_n;
+	option->slots_n = (paint_height-tile->height+1)*(paint_width-tile->width+1);
 	option->rotate_flag = tile->rotate_flag;
 	option->y_priority = paint_height-tile->height;
 	option->x_priority = paint_width-tile->width;
 	if (tile->rotate_flag) {
+		option->slots_n += (paint_height-tile->width+1)*(paint_width-tile->height+1);
 		option->y_priority += paint_height;
 	}
 }
