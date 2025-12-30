@@ -33,7 +33,7 @@ int main(void) {
 	unsigned paint_area, tiles_area_sum, tile_idx;
 	tile_t **neighbours;
 	if (scanf("%d%u%u%u", &minimize_flag, &paint_height, &paint_width, &tiles_n) != 4 || paint_height < 1 || paint_width < PAINT_WIDTH_MIN || paint_height > paint_width || paint_height > SIZE_T_MAX/paint_width || tiles_n < TILES_MIN || tiles_n > TILES_MAX) {
-		fprintf(stderr, "Expected parameters: minimize_flag, paint_height (>= 1), paint_width (>= %d and >= paint_height), tiles_n (>= %d).\n", PAINT_WIDTH_MIN, TILES_MIN);
+		fprintf(stderr, "Expected parameters: minimize_flag, paint_height (>= 1), paint_width (>= %u and >= paint_height), tiles_n (>= %u).\n", PAINT_WIDTH_MIN, TILES_MIN);
 		fflush(stderr);
 		return EXIT_FAILURE;
 	}

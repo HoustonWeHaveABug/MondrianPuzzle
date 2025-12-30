@@ -1,14 +1,11 @@
-MONDRIAN_DEBUG_C_FLAGS=-c -g -std=c89 -Wpedantic -Wall -Wextra -Waggregate-return -Wcast-align -Wcast-qual -Wconversion -Wformat=2 -Winline -Wlong-long -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -Wpointer-arith -Wredundant-decls -Wshadow -Wstrict-prototypes -Wwrite-strings -Wswitch-default -Wswitch-enum -Wbad-function-cast -Wstrict-overflow=5 -Wundef -Wlogical-op -Wfloat-equal -Wold-style-definition
-MONDRIAN_DEBUG_OBJS=mondrian_debug.o mp_utils_debug.o
+MONDRIAN_DEBUG_C_FLAGS=-c -fPIE -fsanitize=bounds -fsanitize-undefined-trap-on-error -fstack-clash-protection -fstack-protector-strong -g -std=c89 -Waggregate-return -Wall -Walloca -Warith-conversion -Warray-bounds=2 -Wbad-function-cast -Wcast-align=strict -Wcast-qual -Wconversion -Wduplicated-branches -Wduplicated-cond -Werror -Wextra -Wfloat-equal -Wformat=2 -Wformat-overflow=2 -Wformat-security -Wformat-signedness -Wformat-truncation=2 -Wimplicit-fallthrough=3 -Winline -Wl,-z,noexecstack -Wl,-z,now -Wl,-z,relro -Wl,-z,separate-code -Wlogical-op -Wlong-long -Wmissing-declarations -Wmissing-prototypes -Wnested-externs -Wnull-dereference -Wold-style-definition -Wpedantic -Wpointer-arith -Wredundant-decls -Wshadow -Wshift-overflow=2 -Wstack-protector -Wstack-usage=1000000 -Wstrict-overflow=4 -Wstrict-prototypes -Wstringop-overflow=4 -Wswitch-default -Wswitch-enum -Wtraditional-conversion -Wtrampolines -Wundef -Wvla -Wwrite-strings
+MONDRIAN_DEBUG_OBJS=mondrian_debug.o
 
 mondrian_debug: ${MONDRIAN_DEBUG_OBJS}
 	gcc -g -o mondrian_debug ${MONDRIAN_DEBUG_OBJS}
 
 mondrian_debug.o: mondrian.c mondrian_debug.make
 	gcc ${MONDRIAN_DEBUG_C_FLAGS} -o mondrian_debug.o mondrian.c
-
-mp_utils_debug.o: mp_utils.h mp_utils.c mondrian_debug.make
-	gcc ${MONDRIAN_DEBUG_C_FLAGS} -o mp_utils_debug.o mp_utils.c
 
 clean:
 	rm -f mondrian_debug ${MONDRIAN_DEBUG_OBJS}
