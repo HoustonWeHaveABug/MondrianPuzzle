@@ -28,7 +28,7 @@ If Defect A > Defect B, the search is called starting with Current = Defect A. W
 
 Minimum number of options T greater than 2 can be specified to check only the sets containing at least T tiles.
 
-The bash script mondrian_order_range.sh calls the solver for every squares in the order range specified.
+The bash script mondrian_squares.sh calls the solver for every squares in the order range specified.
 
 The bash script mondrian_rectangles.sh calls the solver for every rectangles in the width range specified.
 
@@ -36,7 +36,7 @@ The bash script mondrian_edpeggjr_ub.sh calls the solver from the upper bound fo
 
 A text file mondrian_achievements.txt contains optimal defects, lower bounds and upper bounds with the corresponding solution found by this solver.
 
-A text file mondrian_view_optimals.txt contains the optimal tilings found by this solver.
+The text files mondrian_view_A276523.txt and mondrian_view_A279596.txt contain the optimal tilings found by this solver and related to the respective OEIS sequences.
 
 The mondrian_view program converts the output of the solver to the corresponding tiling. It expects the following parameters on standard input:
 - Minimize flag (1: on, 0: off)
