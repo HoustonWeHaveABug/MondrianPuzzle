@@ -20,7 +20,7 @@ Otherwise, the program will solve the \<Order low\>x\<Order high\> rectangle.
 
 When Rotate flag is on, the program will consider tiles MxN and NxM identical. When it is off, they will be considered distinct.
 
-The program will try to solve the puzzle searching from Defect A to Defect B.
+The program will try to solve the problem searching from Defect A to Defect B.
 
 If Defect A <= Defect B, the search is called for each Current in range \[ Defect A, Defect B \] until a solution is found where Defect = Current. This is the preferred option when searching for an optimal solution.
 
