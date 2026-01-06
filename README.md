@@ -9,7 +9,8 @@ The mondrian program is the solver and expects the following parameters on stand
 - Rotate flag (1: on, 0: off)
 - Defect A (>= 0)
 - Defect B (>= 0)
-- Minimum number of options (>= 2)
+- Options low (>= 2)
+- Options high (>= Options low)
 - Verbose mode (1: on, 0: off)
 
 When Request is squares, the program will iterate on every squares in range \[ \<Order low\>x\<Order low\>, \<Order high\>x\<Order high\> \].
@@ -26,7 +27,8 @@ If Defect A <= Defect B, the search is called for each Current in range \[ Defec
 
 If Defect A > Defect B, the search is called starting with Current = Defect A. When a solution is found where Defect <= Current, then Defect-1 becomes the new Current. The search terminates when Current < Defect B. This is the preferred option when searching for an approximate solution (large paint areas).
 
-Minimum number of options T greater than 2 can be specified to check only the sets containing at least T tiles.
+Options low greater than or equal to 2 can be specified to check only the sets containing at least that number of tiles.
+Options high greater than or equal to Options low can be specified to check only the sets containing at most that number of tiles.
 
 The bash script mondrian_squares.sh calls the solver for every squares in the order range specified.
 
