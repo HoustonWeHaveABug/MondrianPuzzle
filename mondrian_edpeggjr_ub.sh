@@ -1,17 +1,15 @@
 #!/bin/bash
-if [ $# -ne 2 ]
+if [ $# -ne 4 ]
 then
-	echo "Usage: $0 <order> <rotate_flag>"
+	echo "Usage: $0 <order> <rotate_flag> <options_lo> <options_hi>"
 	exit 1
 fi
 make -f mondrian.make
-let ORDER=$1
-let ROTATE_FLAG=$2
-if [ $ROTATE_FLAG -eq 0 ]
+if [ $2 -eq 0 ]
 then
-	UB=`echo "$ORDER/l($ORDER)+1" | bc -l | sed "s/\..*//g"`
+	UB=`echo "$1/l($1)+1" | bc -l | sed "s/\..*//g"`
 else
-	UB=`echo "$ORDER/l($ORDER)+4" | bc -l | sed "s/\..*//g"`
+	UB=`echo "$1/l($1)+4" | bc -l | sed "s/\..*//g"`
 fi
-echo 0 $ORDER $ORDER $ROTATE_FLAG $UB 0 2 0 | ./mondrian
+echo 0 $1 $1 $2 $UB 0 $3 $4 0 | ./mondrian
 exit 0

@@ -393,29 +393,35 @@ Lower bound 16
 
 SQUARE ORDER 74
 
-Upper bound 19 (>)
+Optimal 15
 
-0x0;4x74
-68x22;6x52
-4x0;51x6
-24x16;50x6
-24x22;44x7
-4x6;7x43
-59x39;9x35
-26x54;33x9
-24x6;31x10
-38x29;30x10
-4x63;28x11
-32x63;27x11
-26x29;12x25
-11x6;13x23
-4x49;22x14
-38x39;21x15
-11x29;15x20
-55x0;19x16
-
-Options lower bound 18
-Lower bound 15
+0x0;3x65
+0x65;23x9
+3x0;16x13
+3x13;5x42
+3x55;20x10
+8x13;11x19
+8x32;22x9
+8x41;15x14
+19x0;52x4
+19x4;49x4
+19x8;39x5
+19x13;26x8
+19x21;18x11
+23x41;7x29
+23x70;51x4
+30x32;7x28
+30x60;21x10
+37x21;8x25
+37x46;14x14
+45x13;6x33
+51x13;7x30
+51x43;13x15
+51x58;17x12
+58x8;6x35
+64x8;4x50
+68x4;3x66
+71x0;3x70
 
 SQUARE ORDER 75
 
@@ -486,7 +492,7 @@ Upper bound 18 (>)
 47x48;23x18
 
 Options lower bound 17
-Lower bound 15
+Lower bound 16
 
 SQUARE ORDER 78
 
@@ -875,7 +881,7 @@ Optimal 8
 
 SQUARE ORDER 52
 
-Upper bound 9
+Optimal 9
 
 0x0;3x35
 0x35;6x17
@@ -904,9 +910,6 @@ Upper bound 9
 38x0;14x7
 45x10;7x15
 47x31;5x21
-
-Options lower bound 31
-Lower bound 8
 
 SQUARE ORDER 53
 
