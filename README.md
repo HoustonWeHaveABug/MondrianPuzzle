@@ -28,6 +28,7 @@ If Defect A <= Defect B, the search is called for each Current in range \[ Defec
 If Defect A > Defect B, the search is called starting with Current = Defect A. When a solution is found where Defect <= Current, then Defect-1 becomes the new Current. The search terminates when Current < Defect B. This is the preferred option when searching for an approximate solution (large paint areas).
 
 Options low greater than or equal to 2 can be specified to check only the sets containing at least that number of tiles.
+
 Options high greater than or equal to Options low can be specified to check only the sets containing at most that number of tiles.
 
 The bash script mondrian_squares.sh calls the solver for every squares in the order range specified.
