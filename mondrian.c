@@ -1111,7 +1111,7 @@ static void mp_inc(unsigned mp[]) {
 static void mp_print(const char *label, unsigned mp[]) {
 	printf("%s ", label);
 	if (mp[1]) {
-		printf("%u*%u+", mp[1], UINT_MAX);
+		printf("%u*(%u+1)+", mp[1], UINT_MAX);
 	}
 	flush_log(stdout, "%u\n", mp[0]);
 }
