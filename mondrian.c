@@ -4,6 +4,7 @@
 #include <limits.h>
 
 #define MP_SIZE 2
+#define P_MUL 10
 #define SIZE_T_MAX (size_t)-1
 #define REQUEST_SQUARES 1
 #define REQUEST_RECTANGLES 2
@@ -89,9 +90,9 @@ static void rollback_y_slot(bar_t *, bar_t *, bar_t *, int, int);
 static int search_x_slot(choice_t *);
 static int is_valid_choice(const option_t *, int, int);
 static void add_choice(int, int);
-static void mp_new(unsigned []);
-static void mp_inc(unsigned []);
-static void mp_print(const char *, unsigned []);
+static void mp_new(int []);
+static void mp_inc(int []);
+static void mp_print(const char *, const int []);
 static void set_tile(tile_t *, int, int);
 static int compare_tiles(const void *, const void *);
 static void copy_tile(option_t *, const tile_t *);
@@ -109,8 +110,7 @@ static void insert_choice(choice_t *, choice_t *, choice_t *);
 static void link_choices(choice_t *, choice_t *);
 static void flush_log(FILE *, const char *, ...);
 
-static int paint_height, paint_width, rotate_flag, defect_a, defect_b, options_lo, options_hi, verbose_flag, paint_area, *counts, tiles_max, mondrian_tiles_max, success_tiles_n, defect_cur, mondrian_tiles_cur, tiles_n, mondrian_tiles_n, tile_stop, tiles_area, mondrian_defect, height_max, width_max, options_n, bars_n, solutions_n;
-static unsigned y_cost[MP_SIZE], x_cost[MP_SIZE];
+static int paint_height, paint_width, rotate_flag, defect_a, defect_b, options_lo, options_hi, verbose_flag, p_max, p_len, paint_area, *counts, tiles_max, mondrian_tiles_max, success_tiles_n, defect_cur, mondrian_tiles_cur, tiles_n, mondrian_tiles_n, tile_stop, tiles_area, mondrian_defect, height_max, width_max, options_n, y_cost[MP_SIZE], bars_n, solutions_n, x_cost[MP_SIZE];
 static tile_t *tiles, *success_tiles, **mondrian_tiles;
 static option_t *options, **solutions, *options_header, *option_sym;
 static bar_t *bars, *bars_header;
@@ -122,6 +122,8 @@ int main(void) {
 		flush_log(stderr, "Expected parameters: request (%d = squares / %d = rectangles / other = unique), order_lo (>= 1), order_hi (>= order_lo), rotate_flag, defect_a (>= 0), defect_b (>= 0), options_lo (>= %d), options_hi (>= options_lo), verbose_flag.\n", REQUEST_SQUARES, REQUEST_RECTANGLES, OPTIONS_LO_MIN);
 		return EXIT_FAILURE;
 	}
+	for (p_max = 1, p_len = 0; p_max <= INT_MAX/P_MUL; p_max *= P_MUL, ++p_len);
+	--p_max;
 	if (request == REQUEST_SQUARES) {
 		for (paint_height = order_lo; paint_height <= order_hi; ++paint_height) {
 			paint_width = paint_height;
@@ -810,7 +812,7 @@ static void print_solution(void) {
 	for (i = 0; i < solutions_n; ++i) {
 		print_option(solutions[i]);
 	}
-	if (height_max < paint_height || width_max < paint_width) {
+	if (options_n < mondrian_tiles_n) {
 		puts("Locks");
 		for (i = mondrian_tiles_n; i--; ) {
 			print_lock(mondrian_tiles[i]);
@@ -1093,27 +1095,31 @@ static void add_choice(int y_slot, int x_slot) {
 	insert_choice(choices_hi, choice, choice->next);
 }
 
-static void mp_new(unsigned mp[]) {
-	mp[0] = 0;
-	mp[1] = 0;
-}
-
-static void mp_inc(unsigned mp[]) {
-	if (mp[0] < UINT_MAX) {
-		++mp[0];
-	}
-	else {
-		mp[0] = 0;
-		++mp[1];
+static void mp_new(int mp[]) {
+	int i;
+	for (i = 0; i < MP_SIZE; ++i) {
+		mp[i] = 0;
 	}
 }
 
-static void mp_print(const char *label, unsigned mp[]) {
-	printf("%s ", label);
-	if (mp[1]) {
-		printf("%u*(%u+1)+", mp[1], UINT_MAX);
+static void mp_inc(int mp[]) {
+	int i;
+	for (i = 0; i < MP_SIZE && mp[i] == p_max; ++i) {
+		mp[i] = 0;
 	}
-	flush_log(stdout, "%u\n", mp[0]);
+	if (i < MP_SIZE) {
+		++mp[i];
+	}
+}
+
+static void mp_print(const char *label, const int mp[]) {
+	int i;
+	for (i = MP_SIZE-1; i && !mp[i]; --i);
+	printf("%s %d", label, mp[i]);
+	for (--i; i+1; --i) {
+		printf(",%0*d", p_len, mp[i]);
+	}
+	flush_log(stdout, "\n");
 }
 
 static void set_tile(tile_t *tile, int height, int width) {
