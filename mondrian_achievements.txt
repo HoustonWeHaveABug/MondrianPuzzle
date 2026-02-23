@@ -227,7 +227,7 @@ Optimal 14
 
 SQUARE ORDER 67
 
-Upper bound 16 (=)
+Optimal 16
 
 0x0;4x55
 0x55;45x5
@@ -249,9 +249,6 @@ Upper bound 16 (=)
 47x19;16x14
 55x33;8x27
 63x11;4x56
-
-Options lower bound 26
-Lower bound 15
 
 SQUARE ORDER 68
 
@@ -572,7 +569,7 @@ Upper bound 18 (=)
 22x11;35x9
 22x20;15x21
 
-Options lower bound 21
+Options lower bound 25
 Lower bound 15
 
 SQUARE ORDER 96
@@ -718,7 +715,7 @@ Lower bound 16
 * ROTATE FLAG OFF *
 *******************
 
-SQUARES ORDER 3 TO 540
+SQUARES ORDER 3 TO 629
 
 No solution found with defect = 0
 

@@ -110,7 +110,7 @@ static void insert_choice(choice_t *, choice_t *, choice_t *);
 static void link_choices(choice_t *, choice_t *);
 static void flush_log(FILE *, const char *, ...);
 
-static int paint_height, paint_width, rotate_flag, defect_a, defect_b, options_lo, options_hi, verbose_flag, p_max, p_len, paint_area, *counts, tiles_max, mondrian_tiles_max, success_tiles_n, defect_cur, mondrian_tiles_cur, tiles_n, mondrian_tiles_n, tile_stop, tiles_area, mondrian_defect, height_max, width_max, options_n, y_cost[MP_SIZE], bars_n, solutions_n, x_cost[MP_SIZE];
+static int rotate_flag, defect_a, defect_b, options_lo, options_hi, verbose_flag, p_max, p_len, paint_height, paint_width, paint_area, *counts, tiles_max, mondrian_tiles_max, success_tiles_n, defect_cur, mondrian_tiles_cur, tiles_n, mondrian_tiles_n, tile_stop, tiles_area, mondrian_defect, height_max, width_max, options_n, y_cost[MP_SIZE], bars_n, solutions_n, x_cost[MP_SIZE];
 static tile_t *tiles, *success_tiles, **mondrian_tiles;
 static option_t *options, **solutions, *options_header, *option_sym;
 static bar_t *bars, *bars_header;
