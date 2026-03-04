@@ -8,7 +8,8 @@
 #define SIZE_T_MAX (size_t)-1
 #define REQUEST_SQUARES 1
 #define REQUEST_RECTANGLES 2
-#define OPTIONS_LO_MIN 2
+#define OPTIONS_MIN 2
+#define NOT_ENOUGH_TILES 2
 #define TILE_LOCKED 2
 
 typedef struct {
@@ -18,7 +19,6 @@ typedef struct {
 	int delta;
 	int slots_n;
 	int rotate_flag;
-	int area_left;
 }
 tile_t;
 
@@ -76,7 +76,7 @@ static int check_big_tile1(int, int, int, int);
 static int check_big_tile2(int, int, int);
 static void check_count(int);
 static void add_tile(int, int);
-static int add_mondrian_tile(int, int, int);
+static int add_mondrian_tile(int, int);
 static int is_mondrian(void);
 static int can_rotate(const tile_t *);
 static int can_be_locked(tile_t *);
@@ -111,16 +111,16 @@ static void link_choices(choice_t *, choice_t *);
 static void flush_log(FILE *, const char *, ...);
 static void free_data(void);
 
-static int rotate_flag, defect_a, defect_b, options_lo, options_hi, verbose_flag, p_max, p_len, tiles_max, mondrian_tiles_max, paint_height, paint_width, paint_area, *counts, success_tiles_n, defect_cur, options_cur, tiles_n, mondrian_tiles_n, tile_stop, tiles_area, mondrian_defect, height_max, width_max, options_n, y_cost[MP_SIZE], bars_n, solutions_n, x_cost[MP_SIZE];
-static tile_t *tiles, *success_tiles, **mondrian_tiles;
+static int rotate_flag, defect_a, defect_b, options_lo, options_hi, verbose_flag, p_max, p_len, tiles_max, paint_height, paint_width, paint_area, *counts, defect_cur, options_cur, tiles_n, mondrian_tiles_n, tile_stop, tiles_area, mondrian_defect, height_max, width_max, options_n, y_cost[MP_SIZE], bars_n, solutions_n, x_cost[MP_SIZE];
+static tile_t *tiles, **mondrian_tiles;
 static option_t *options, **solutions, *options_header, *option_sym;
 static bar_t *bars, *bars_header;
 static choice_t *choices, *choices_header, *choices_hi;
 
 int main(void) {
 	int request, order_lo, order_hi, choices_n;
-	if (scanf("%d%d%d%d%d%d%d%d%d", &request, &order_lo, &order_hi, &rotate_flag, &defect_a, &defect_b, &options_lo, &options_hi, &verbose_flag) != 9 || order_lo < 1 || order_lo > order_hi || (unsigned)order_lo > SIZE_T_MAX/(unsigned)order_hi || defect_a < 0 || defect_b < 0 || options_lo < OPTIONS_LO_MIN || options_lo > options_hi) {
-		flush_log(stderr, "Expected parameters: request (%d = squares / %d = rectangles / other = unique), order_lo (>= 1), order_hi (>= order_lo), rotate_flag, defect_a (>= 0), defect_b (>= 0), options_lo (>= %d), options_hi (>= options_lo), verbose_flag.\n", REQUEST_SQUARES, REQUEST_RECTANGLES, OPTIONS_LO_MIN);
+	if (scanf("%d%d%d%d%d%d%d%d%d", &request, &order_lo, &order_hi, &rotate_flag, &defect_a, &defect_b, &options_lo, &options_hi, &verbose_flag) != 9 || order_lo < 1 || order_lo > order_hi || (unsigned)order_lo > SIZE_T_MAX/(unsigned)order_hi || defect_a < 0 || defect_b < 0 || options_lo < OPTIONS_MIN || options_lo > options_hi) {
+		flush_log(stderr, "Expected parameters: request (%d = squares / %d = rectangles / other = unique), order_lo (>= 1), order_hi (>= order_lo), rotate_flag, defect_a (>= 0), defect_b (>= 0), options_lo (>= %d), options_hi (>= options_lo), verbose_flag.\n", REQUEST_SQUARES, REQUEST_RECTANGLES, OPTIONS_MIN);
 		return EXIT_FAILURE;
 	}
 	for (p_max = 1, p_len = 0; p_max <= INT_MAX/P_MUL; p_max *= P_MUL, ++p_len);
@@ -131,22 +131,20 @@ int main(void) {
 		return 0;
 	}
 	tiles_max = 1;
-	success_tiles = tiles+1;
-	mondrian_tiles = malloc(sizeof(tile_t *)*(size_t)options_lo);
+	mondrian_tiles = malloc(sizeof(tile_t *)*(size_t)options_hi);
 	if (!mondrian_tiles) {
 		flush_log(stderr, "Could not allocate memory for mondrian_tiles\n");
 		free(tiles);
 		return 0;
 	}
-	mondrian_tiles_max = options_lo;
-	options = malloc(sizeof(option_t)*(size_t)(options_lo+1));
+	options = malloc(sizeof(option_t)*(size_t)(options_hi+1));
 	if (!options) {
 		flush_log(stderr, "Could not allocate memory for options\n");
 		free(mondrian_tiles);
 		free(tiles);
 		return 0;
 	}
-	solutions = malloc(sizeof(option_t *)*(size_t)options_lo);
+	solutions = malloc(sizeof(option_t *)*(size_t)options_hi);
 	if (!solutions) {
 		flush_log(stderr, "Could not allocate memory for solutions\n");
 		free(options);
@@ -154,7 +152,7 @@ int main(void) {
 		free(tiles);
 		return 0;
 	}
-	choices_n = options_lo*2;
+	choices_n = options_hi*2;
 	choices = malloc(sizeof(choice_t)*(size_t)(choices_n+1));
 	if (!choices) {
 		flush_log(stderr, "Could not allocate memory for choices\n");
@@ -219,24 +217,22 @@ static int run_request(const char *request) {
 	}
 	bars_header = bars+paint_height;
 	insert_bar(bars, bars_header, bars_header);
-	success_tiles_n = 0;
 	defect_cur = defect_a;
 	if (defect_a <= defect_b) {
 		do {
-			options_cur = options_lo;
-			r = search_defect();
-			if (!r) {
-				++defect_cur;
+			r = 0;
+			for (options_cur = options_lo; options_cur <= options_hi && !r; ++options_cur) {
+				r = search_defect();
 			}
+			++defect_cur;
 		}
-		while (!r && defect_cur <= defect_b);
+		while ((!r || r == NOT_ENOUGH_TILES) && defect_cur <= defect_b);
 	}
 	else {
-		options_cur = options_lo;
-		do {
+		r = 0;
+		for (options_cur = options_lo; options_cur <= options_hi && (!r || r == 1) && defect_cur >= defect_b; ++options_cur) {
 			r = search_defect();
 		}
-		while (r == 1 && options_cur <= options_hi && defect_cur >= defect_b);
 	}
 	free(bars);
 	free(counts);
@@ -341,14 +337,13 @@ static int search_defect(void) {
 	flush_log(stdout, "Current %d Tiles %d\n", defect_cur, tiles_n);
 	if (tiles_n >= options_cur) {
 		if (tiles_n > tiles_max) {
-			tile_t *tiles_tmp = realloc(tiles, sizeof(tile_t)*(size_t)(tiles_n+mondrian_tiles_max));
+			tile_t *tiles_tmp = realloc(tiles, sizeof(tile_t)*(size_t)tiles_n);
 			if (!tiles_tmp) {
 				flush_log(stderr, "Could not reallocate memory for tiles\n");
 				return -1;
 			}
 			tiles = tiles_tmp;
 			tiles_max = tiles_n;
-			success_tiles = tiles+tiles_n;
 		}
 		tiles_n = 0;
 		for (width = 1; width < paint_height; ++width) {
@@ -434,56 +429,11 @@ static int search_defect(void) {
 		}
 		qsort(tiles, (size_t)tiles_n, sizeof(tile_t), compare_tiles);
 		mondrian_tiles_n = 0;
-		area = 0;
-		for (i = tiles_n; i && area < paint_area; --i) {
-			++mondrian_tiles_n;
-			area += tiles[i-1].area;
-		}
-		if (mondrian_tiles_n > mondrian_tiles_max) {
-			int choices_n;
-			tile_t *tiles_tmp = realloc(tiles, sizeof(tile_t)*(size_t)(tiles_max+mondrian_tiles_n)), **mondrian_tiles_tmp;
-			option_t *options_tmp, **solutions_tmp;
-			choice_t *choices_tmp;
-			if (!tiles_tmp) {
-				flush_log(stderr, "Could not reallocate memory for tiles\n");
-				return -1;
-			}
-			tiles = tiles_tmp;
-			success_tiles = tiles+tiles_max;
-			mondrian_tiles_tmp = realloc(mondrian_tiles, sizeof(tile_t *)*(size_t)mondrian_tiles_n);
-			if (!mondrian_tiles_tmp) {
-				flush_log(stderr, "Could not reallocate memory for mondrian_tiles\n");
-				return -1;
-			}
-			mondrian_tiles = mondrian_tiles_tmp;
-			mondrian_tiles_max = mondrian_tiles_n;
-			options_tmp = realloc(options, sizeof(option_t)*(size_t)(mondrian_tiles_n+1));
-			if (!options_tmp) {
-				flush_log(stderr, "Could not reallocate memory for options\n");
-				return -1;
-			}
-			options = options_tmp;
-			solutions_tmp = realloc(solutions, sizeof(option_t *)*(size_t)mondrian_tiles_n);
-			if (!solutions_tmp) {
-				flush_log(stderr, "Could not reallocate memory for solutions\n");
-				return -1;
-			}
-			solutions = solutions_tmp;
-			choices_n = mondrian_tiles_n*2;
-			choices_tmp = realloc(choices, sizeof(choice_t)*(size_t)(choices_n+1));
-			if (!choices_tmp) {
-				flush_log(stderr, "Could not reallocate memory for choices\n");
-				return -1;
-			}
-			choices = choices_tmp;
-			choices_header = choices+choices_n;
-		}
-		mondrian_tiles_n = 0;
 		tile_stop = 0;
 		tiles_area = 0;
-		return add_mondrian_tile(0, 1, paint_height == paint_width);
+		return add_mondrian_tile(0, paint_height == paint_width);
 	}
-	return 0;
+	return NOT_ENOUGH_TILES;
 }
 
 static int is_valid_area(int area) {
@@ -567,34 +517,20 @@ static void add_tile(int height, int width) {
 	++tiles_n;
 }
 
-static int add_mondrian_tile(int tiles_start, int same_flag, int sym_flag) {
+static int add_mondrian_tile(int tiles_start, int sym_flag) {
 	int i;
 	for (i = tiles_start; i < tiles_n; ++i) {
 		int r;
-		if (same_flag) {
-			if (mondrian_tiles_n < success_tiles_n) {
-				r = compare_tiles(tiles+i, success_tiles+mondrian_tiles_n);
-				if (r < 0) {
-					continue;
-				}
-				same_flag = !r;
-			}
-			else {
-				same_flag = 0;
-			}
-		}
 		if (mondrian_tiles_n) {
-			if (mondrian_tiles_n+1 < options_cur) {
-				if (i+options_cur > tile_stop+mondrian_tiles_n) {
-					return 0;
-				}
+			int j;
+			if (i+options_cur > tile_stop+mondrian_tiles_n) {
+				return 0;
 			}
-			else {
-				if (i == tile_stop) {
-					return 0;
-				}
+			r = tiles_area;
+			for (j = i; j < tile_stop && r < paint_area; ++j) {
+				r += tiles[j].area;
 			}
-			if (tiles_area+tiles[i].area_left < paint_area) {
+			if (r < paint_area || j+mondrian_tiles_n > i+options_cur) {
 				return 0;
 			}
 			if (sym_flag) {
@@ -614,7 +550,6 @@ static int add_mondrian_tile(int tiles_start, int same_flag, int sym_flag) {
 			}
 		}
 		else {
-			int j;
 			if (sym_flag && tiles[i].delta < 0) {
 				continue;
 			}
@@ -629,48 +564,30 @@ static int add_mondrian_tile(int tiles_start, int same_flag, int sym_flag) {
 					continue;
 				}
 			}
-			r = 0;
-			for (j = tile_stop-1; j >= i; --j) {
-				if (r <= paint_area) {
-					r += tiles[j].area;
-				}
-				tiles[j].area_left = r;
-			}
 		}
-		if ((mondrian_tiles_n < options_cur && tiles_area+tiles[tile_stop-options_cur+mondrian_tiles_n].area_left > paint_area) || tiles_area+tiles[i].area > paint_area) {
+		if (tiles_area+tiles[i].area > paint_area) {
 			continue;
 		}
 		mondrian_tiles[mondrian_tiles_n++] = tiles+i;
 		tiles_area += tiles[i].area;
-		if (mondrian_tiles_n > options_cur) {
-			options_cur = mondrian_tiles_n;
-			flush_log(stdout, "Mondrian tiles %d\n", options_cur);
-		}
 		if (tiles_area < paint_area) {
-			r = mondrian_tiles_n < options_hi ? add_mondrian_tile(i+1, same_flag, sym_flag):0;
+			r = mondrian_tiles_n < options_cur ? add_mondrian_tile(i+1, sym_flag):0;
 		}
 		else {
-			mondrian_defect = mondrian_tiles[0]->area-tiles[i].area;
-			if (defect_a <= defect_b) {
-				r = mondrian_defect == defect_cur ? is_mondrian():0;
-			}
-			else {
-				if (mondrian_defect >= defect_b) {
-					r = is_mondrian();
-					if (r) {
-						int j;
-						for (j = mondrian_tiles_n; j--; ) {
-							success_tiles[j] = *(mondrian_tiles[j]);
-						}
-						if (mondrian_tiles_n > success_tiles_n) {
-							success_tiles_n = mondrian_tiles_n;
-						}
-						defect_cur = mondrian_defect-1;
-					}
+			if (mondrian_tiles_n == options_cur) {
+				mondrian_defect = mondrian_tiles[0]->area-tiles[i].area;
+				if (defect_a <= defect_b) {
+					r = mondrian_defect == defect_cur ? is_mondrian():0;
 				}
 				else {
+					if (mondrian_defect >= defect_b && mondrian_defect <= defect_cur && is_mondrian()) {
+						defect_cur = mondrian_defect-1;
+					}
 					r = 0;
 				}
+			}
+			else {
+				r = 0;
 			}
 		}
 		tiles_area -= tiles[i].area;
